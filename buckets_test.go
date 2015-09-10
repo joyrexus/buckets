@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	bx   *DB     // buckets db used across tests
-	path string  // file path to temp bux db
+	bx   *DB    // buckets db used across tests
+	path string // file path to temp bux db
 )
 
 // TestOpen ensures that a bux db that can be opened/closed without error.
@@ -51,7 +51,7 @@ func TestPut(t *testing.T) {
 		{"B", "beta"},
 		{"C", "gamma"},
 	}
-		
+
 	for _, pair := range pairs {
 		key, val := []byte(pair.k), []byte(pair.v)
 		if err = things.Put(key, val); err != nil {
@@ -65,6 +65,11 @@ func TestGet(t *testing.T) {
 	things, err := bx.New("things")
 	if err != nil {
 		t.Error(err.Error())
+	}
+
+	key := []byte("missing")
+	if got, _ := things.Get(key); got != nil {
+		t.Errorf("not expecting value for key %q: got %q", key, got)
 	}
 
 	// k, v pairs to get/check from `things` bucket
@@ -88,16 +93,6 @@ func TestGet(t *testing.T) {
 	}
 }
 
-// TestDeleteBucket ensures that we can delete a bucket.
-func TestDeleteBucket(t *testing.T) {
-	if _, err := bx.New("foo"); err != nil {
-		t.Error(err.Error())
-	}
-	if err := bx.Delete("foo"); err != nil {
-		t.Error(err.Error())
-	}
-}
-
 // TestMap ensures that we can apply functions to each k/v pair.
 func TestMap(t *testing.T) {
 	things, err := bx.New("things")
@@ -110,12 +105,11 @@ func TestMap(t *testing.T) {
 
 	var keys, values []string
 	do := func(k, v []byte) error {
-        keys = append(keys, string(k))
-        values = append(values, string(v))
+		keys = append(keys, string(k))
+		values = append(values, string(v))
 		return nil
 	}
-	err = things.Map(do)
-	if err != nil {
+	if err := things.Map(do); err != nil {
 		t.Error(err.Error())
 	}
 
@@ -131,6 +125,90 @@ func TestMap(t *testing.T) {
 	}
 }
 
+// TestPrefixMap ensures that we can apply functions to each k/v pair.
+func TestPrefixMap(t *testing.T) {
+	things, err := bx.New("things")
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// k, v pairs to put in `things` bucket
+	pairs := []struct {
+		k, v string
+	}{
+		{"A", "1"},   // `A` prefix match
+		{"B", "0"},
+		{"AA", "2"},  // match
+		{"AAA", "3"}, // match
+		{"BA", "1"},
+		{"BAA", "2"},
+		{"AAB", "2"}, // match
+	}
+
+	for _, pair := range pairs {
+		key, val := []byte(pair.k), []byte(pair.v)
+		if err = things.Put(key, val); err != nil {
+			t.Error(err.Error())
+		}
+	}
+
+	prefix := []byte("A")
+	wantKeys := []string{"A", "AA", "AAA", "AAB"}
+	wantValues := []string{"1", "2", "3", "2"}
+
+
+	// collect keys and values of matched keys in `do` func
+	var keys, values []string
+
+	// anon func to map over keys with prefix "A"
+	do := func(k, v []byte) error {
+		keys = append(keys, string(k))
+		values = append(values, string(v))
+		return nil
+	}
+
+	if err := things.PrefixMap(prefix, do); err != nil {
+		t.Error(err.Error())
+	}
+
+	for i, want := range wantKeys {
+		if got := keys[i]; want != got {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	}
+	for i, want := range wantValues {
+		if got := values[i]; want != got {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	}
+}
+
+// TestDelete ensures that we can put stuff in a bucket.
+func TestDelete(t *testing.T) {
+	things, err := bx.New("things")
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	k, v := []byte("foo"), []byte("bar")
+	if err = things.Put(k, v); err != nil {
+		t.Error(err.Error())
+	}
+
+	if err = things.Delete(k); err != nil {
+		t.Error(err.Error())
+	}
+}
+
+// TestDeleteBucket ensures that we can delete a bucket.
+func TestDeleteBucket(t *testing.T) {
+	if _, err := bx.New("foo"); err != nil {
+		t.Error(err.Error())
+	}
+	if err := bx.Delete("foo"); err != nil {
+		t.Error(err.Error())
+	}
+}
 
 /* SETUP AND TEARDOWN LOGIC */
 
