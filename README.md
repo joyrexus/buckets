@@ -1,6 +1,8 @@
 # buckets 
 
-A simple key/value store based on [Bolt](https://github.com/boltdb/bolt). [![GoDoc](https://godoc.org/github.com/joyrexus/buckets?status.svg)](https://godoc.org/github.com/joyrexus/buckets)
+[![GoDoc](https://godoc.org/github.com/joyrexus/buckets?status.svg)](https://godoc.org/github.com/joyrexus/buckets)
+
+A simple key/value store based on [Bolt](https://github.com/boltdb/bolt). 
 
 ![buckets](buckets.jpg)
 
