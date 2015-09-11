@@ -10,4 +10,4 @@ In the parlance of [key/value stores](https://en.wikipedia.org/wiki/Key-value_da
 
 Note that buckets is just an extension of Bolt, providing a `Bucket` type with some nifty convenience methods for operating on the key/value pairs within instances of it.
 
-Use `go get github.com/joyrexus/buckets` to install then try `godoc github.com/joyrexus/buckets` for documentation.
+Use `go get github.com/joyrexus/buckets` to install and see the [docs](https://godoc.org/github.com/joyrexus/buckets) for details.
