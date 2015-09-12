@@ -10,35 +10,12 @@ import (
 
 var (
 	bx   *DB    // buckets db used across tests
-	path string // file path to temp bux db
+	path string // file path to temp db
 )
 
-// TestOpen ensures that a bux db that can be opened/closed without error.
-func TestOpenDB(t *testing.T) {
-	temp := tempFilePath()
-	b, err := OpenDB(temp)
-	if err != nil {
-		t.Error(err.Error())
-	}
-	if err := b.Close(); err != nil {
-		t.Error(err.Error())
-	}
-	if err := os.Remove(temp); err != nil {
-		teardown()
-		t.Fatal(err)
-	}
-}
-
-// TestNew ensures that we can create a bucket.
-func TestNew(t *testing.T) {
-	if _, err := bx.New("things"); err != nil {
-		t.Error(err.Error())
-	}
-}
-
-// TestPut ensures that we can put stuff in a bucket.
+// Ensure that we can put stuff in a bucket.
 func TestPut(t *testing.T) {
-	things, err := bx.New("things")
+	things, err := bx.New([]byte("things"))
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -60,9 +37,9 @@ func TestPut(t *testing.T) {
 	}
 }
 
-// TestGet ensures that we can get stuff from a bucket.
+// Ensure that we can get stuff from a bucket.
 func TestGet(t *testing.T) {
-	things, err := bx.New("things")
+	things, err := bx.New([]byte("things"))
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -93,9 +70,9 @@ func TestGet(t *testing.T) {
 	}
 }
 
-// TestDelete ensures that we can delete stuff in a bucket.
+// Ensure that we can delete stuff in a bucket.
 func TestDelete(t *testing.T) {
-	things, err := bx.New("things")
+	things, err := bx.New([]byte("things"))
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -110,9 +87,9 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-// TestMap ensures that we can apply functions to each k/v pair.
+// Ensure that we can apply functions to each k/v pair.
 func TestMap(t *testing.T) {
-	things, err := bx.New("things")
+	things, err := bx.New([]byte("things"))
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -142,10 +119,10 @@ func TestMap(t *testing.T) {
 	}
 }
 
-// TestMapPrefix ensures that we can apply a function to the k/v pairs
+// Ensure that we can apply a function to the k/v pairs
 // of keys with a given prefix.
 func TestMapPrefix(t *testing.T) {
-	things, err := bx.New("things")
+	things, err := bx.New([]byte("things"))
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -200,9 +177,9 @@ func TestMapPrefix(t *testing.T) {
 	}
 }
 
-// TestPrefixScanner ensures we can scan prefixes.
+// Ensure we can scan prefixes.
 func TestPrefixScanner(t *testing.T) {
-	paths, err := bx.New("paths")
+	paths, err := bx.New([]byte("paths"))
 
 	// k, v pairs to put in `years` bucket
 	putPairs := []struct {
@@ -297,12 +274,35 @@ func TestPrefixScanner(t *testing.T) {
 			t.Errorf("got %s, want %s", got.Value, want.Value)
 		}
 	}
+
+	// expected pairs
+	wantPairMap := map[string][]byte{
+		"foo/":         []byte("foo"),
+		"foo/bar/":     []byte("bar"),
+		"foo/bar/baz/": []byte("baz"),
+	}
+
+	// get map of k/v pairs for paths with `foo` prefix
+	pairMap, err := foo.PairMap()
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	for key, want := range wantPairMap {
+		got, ok := pairMap[key]
+		if ok == false {
+			t.Errorf("missing wanted key: %s", key)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("got %s, want %s", got, want)
+		}
+	}
 }
 
-// TestMapRange ensures that we can apply functions to the k/v pairs
+// Ensure we can apply functions to the k/v pairs
 // of keys within a given range.
 func TestMapRange(t *testing.T) {
-	years, err := bx.New("years")
+	years, err := bx.New([]byte("years"))
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -364,9 +364,9 @@ func TestMapRange(t *testing.T) {
 	}
 }
 
-// TestRangeScanner ensures that we can scan ranges.
+// Ensures we can scan ranges.
 func TestRangeScanner(t *testing.T) {
-	years, err := bx.New("years")
+	years, err := bx.New([]byte("years"))
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -400,14 +400,14 @@ func TestRangeScanner(t *testing.T) {
 
 	// expected keys and values
 	wantKeys := [][]byte{
-		[]byte("1990"), 
-		[]byte("1995"), 
-		[]byte("2000"), 
+		[]byte("1990"),
+		[]byte("1995"),
+		[]byte("2000"),
 	}
 	wantValues := [][]byte{
-		[]byte("90"), 
-		[]byte("95"), 
-		[]byte("00"), 
+		[]byte("90"),
+		[]byte("95"),
+		[]byte("00"),
 	}
 
 	nineties, err := years.NewRangeScanner(min, max)
@@ -467,15 +467,28 @@ func TestRangeScanner(t *testing.T) {
 			t.Errorf("got %s, want %s", got.Value, want.Value)
 		}
 	}
-}
 
-// TestDeleteBucket ensures that we can delete a bucket.
-func TestDeleteBucket(t *testing.T) {
-	if _, err := bx.New("foo"); err != nil {
+	// expected pairs
+	wantPairMap := map[string][]byte{
+		"1990": []byte("90"),
+		"1995": []byte("95"),
+		"2000": []byte("00"),
+	}
+
+	// get map of k/v pairs for keys within range (1995 <= year <= 2000)
+	pairMap, err := nineties.PairMap()
+	if err != nil {
 		t.Error(err.Error())
 	}
-	if err := bx.Delete("foo"); err != nil {
-		t.Error(err.Error())
+
+	for key, want := range wantPairMap {
+		got, ok := pairMap[key]
+		if ok == false {
+			t.Errorf("missing wanted key: %s", key)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("got %s, want %s", got, want)
+		}
 	}
 }
 
@@ -504,13 +517,13 @@ func setup() {
 
 // teardown closes the db and removes the dbfile.
 func teardown() error {
-	if err := bx.Close(); err != nil {
-		return err
-	}
-	if err := os.Remove(path); err != nil {
+	if err := os.Remove(bx.Path()); err != nil {
 		return err
 	}
 	// log.Printf("Temp file removed: %v", path)
+	if err := bx.Close(); err != nil {
+		return err
+	}
 	return nil
 }
 

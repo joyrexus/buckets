@@ -25,10 +25,9 @@ func OpenDB(path string) (*DB, error) {
 }
 
 // New creates/opens a named bucket.
-func (db *DB) New(name string) (*Bucket, error) {
-	bn := []byte(name)
+func (db *DB) New(name []byte) (*Bucket, error) {
 	err := db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(bn)
+		_, err := tx.CreateBucketIfNotExists(name)
 		if err != nil {
 			return err
 		}
@@ -37,47 +36,47 @@ func (db *DB) New(name string) (*Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Bucket{db, bn}, nil
+	return &Bucket{db, name}, nil
 }
 
 // Delete removes the named bucket.
-func (db *DB) Delete(name string) error {
+func (db *DB) Delete(name []byte) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		return tx.DeleteBucket([]byte(name))
+		return tx.DeleteBucket(name)
 	})
 }
 
-// A Pair holds a key/value pair.
+// Pair holds a key/value pair.
 type Pair struct {
-	Key []byte
+	Key   []byte
 	Value []byte
 }
 
-// A Bucket holds a set of buckets.
+// Bucket represents a collection of key/value pairs inside the database.
 type Bucket struct {
-	*DB
-	name []byte
+	db   *DB
+	Name []byte
 }
 
 // Put inserts value `v` with key `k`.
 func (bk *Bucket) Put(k, v []byte) error {
-	return bk.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(bk.name).Put(k, v)
+	return bk.db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(bk.Name).Put(k, v)
 	})
 }
 
 // Delete removes key `k`.
 func (bk *Bucket) Delete(k []byte) error {
-	return bk.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(bk.name).Delete(k)
+	return bk.db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(bk.Name).Delete(k)
 	})
 }
 
 // Get retrieves the value for key `k`.
 func (bk *Bucket) Get(k []byte) ([]byte, error) {
 	var value []byte
-	err := bk.View(func(tx *bolt.Tx) error {
-		v := tx.Bucket(bk.name).Get(k)
+	err := bk.db.View(func(tx *bolt.Tx) error {
+		v := tx.Bucket(bk.Name).Get(k)
 		if v != nil {
 			value = make([]byte, len(v))
 			copy(value, v)
@@ -89,15 +88,15 @@ func (bk *Bucket) Get(k []byte) ([]byte, error) {
 
 // Map will apply `do` on each key/value pair.
 func (bk *Bucket) Map(do func(k, v []byte) error) error {
-	return bk.View(func(tx *bolt.Tx) error {
-		return tx.Bucket(bk.name).ForEach(do)
+	return bk.db.View(func(tx *bolt.Tx) error {
+		return tx.Bucket(bk.Name).ForEach(do)
 	})
 }
 
 // MapPrefix will apply `do` on each k/v pair of keys with prefix.
 func (bk *Bucket) MapPrefix(do func(k, v []byte) error, pre []byte) error {
-	return bk.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(bk.name).Cursor()
+	return bk.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(bk.Name).Cursor()
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
 			do(k, v)
 		}
@@ -107,8 +106,8 @@ func (bk *Bucket) MapPrefix(do func(k, v []byte) error, pre []byte) error {
 
 // MapRange will apply `do` on each k/v pair of keys within range.
 func (bk *Bucket) MapRange(do func(k, v []byte) error, min, max []byte) error {
-	return bk.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(bk.name).Cursor()
+	return bk.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(bk.Name).Cursor()
 		for k, v := c.Seek(min); isBefore(k, max); k, v = c.Next() {
 			do(k, v)
 		}
@@ -118,21 +117,22 @@ func (bk *Bucket) MapRange(do func(k, v []byte) error, min, max []byte) error {
 
 // A PrefixScanner scans a bucket for keys with a given prefix.
 type PrefixScanner struct {
-	*Bucket
-	prefix []byte
+	db         *DB
+	BucketName []byte
+	prefix     []byte
 }
 
 // NewPrefixScanner initializes a new prefix scanner.
 func (bk *Bucket) NewPrefixScanner(pre []byte) (*PrefixScanner, error) {
-	return &PrefixScanner{bk, pre}, nil
+	return &PrefixScanner{bk.db, bk.Name, pre}, nil
 }
 
 // Keys will return a slice of keys with prefix.
 func (ps *PrefixScanner) Keys() ([][]byte, error) {
 	var keys [][]byte
 	pre := ps.prefix
-	err := ps.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(ps.name).Cursor()
+	err := ps.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(ps.BucketName).Cursor()
 		for k, _ := c.Seek(pre); bytes.HasPrefix(k, pre); k, _ = c.Next() {
 			keys = append(keys, k)
 		}
@@ -148,8 +148,8 @@ func (ps *PrefixScanner) Keys() ([][]byte, error) {
 func (ps *PrefixScanner) Values() ([][]byte, error) {
 	var values [][]byte
 	pre := ps.prefix
-	err := ps.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(ps.name).Cursor()
+	err := ps.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(ps.BucketName).Cursor()
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
 			values = append(values, v)
 		}
@@ -165,8 +165,8 @@ func (ps *PrefixScanner) Values() ([][]byte, error) {
 func (ps *PrefixScanner) Pairs() ([]Pair, error) {
 	var pairs []Pair
 	pre := ps.prefix
-	err := ps.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(ps.name).Cursor()
+	err := ps.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(ps.BucketName).Cursor()
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
 			pairs = append(pairs, Pair{k, v})
 		}
@@ -178,25 +178,44 @@ func (ps *PrefixScanner) Pairs() ([]Pair, error) {
 	return pairs, err
 }
 
+// PairMap will return a map of key/value pairs for keys with prefix.
+// This only works with buckets whose keys are byte-sliced strings.
+func (ps *PrefixScanner) PairMap() (map[string][]byte, error) {
+	pairs := make(map[string][]byte)
+	pre := ps.prefix
+	err := ps.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(ps.BucketName).Cursor()
+		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
+			pairs[string(k)] = v
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pairs, err
+}
+
 // A RangeScanner scans a bucket for keys within a given range.
 type RangeScanner struct {
-	*Bucket
-	min []byte
-	max []byte
+	db         *DB
+	BucketName []byte
+	Min        []byte
+	Max        []byte
 }
 
 // NewRangeScanner initializes a new range scanner.  It takes a `min` and a
-// `max` key for specifying the range paramaters. 
+// `max` key for specifying the range paramaters.
 func (bk *Bucket) NewRangeScanner(min, max []byte) (*RangeScanner, error) {
-	return &RangeScanner{bk, min, max}, nil
+	return &RangeScanner{bk.db, bk.Name, min, max}, nil
 }
 
 // Keys will return a slice of keys within the range.
 func (rs *RangeScanner) Keys() ([][]byte, error) {
 	var keys [][]byte
-	err := rs.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(rs.name).Cursor()
-		for k, _ := c.Seek(rs.min); isBefore(k, rs.max); k, _ = c.Next() {
+	err := rs.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(rs.BucketName).Cursor()
+		for k, _ := c.Seek(rs.Min); isBefore(k, rs.Max); k, _ = c.Next() {
 			keys = append(keys, k)
 		}
 		return nil
@@ -210,9 +229,9 @@ func (rs *RangeScanner) Keys() ([][]byte, error) {
 // Values will return a slice of values for keys within the range.
 func (rs *RangeScanner) Values() ([][]byte, error) {
 	var values [][]byte
-	err := rs.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(rs.name).Cursor()
-		for k, v := c.Seek(rs.min); isBefore(k, rs.max); k, v = c.Next() {
+	err := rs.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(rs.BucketName).Cursor()
+		for k, v := c.Seek(rs.Min); isBefore(k, rs.Max); k, v = c.Next() {
 			values = append(values, v)
 		}
 		return nil
@@ -224,12 +243,30 @@ func (rs *RangeScanner) Values() ([][]byte, error) {
 }
 
 // Pairs will return a slice of key/value pairs for keys within the range.
+// Note that the returned slice contains elements of type Pair.
 func (rs *RangeScanner) Pairs() ([]Pair, error) {
 	var pairs []Pair
-	err := rs.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(rs.name).Cursor()
-		for k, v := c.Seek(rs.min); isBefore(k, rs.max); k, v = c.Next() {
+	err := rs.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(rs.BucketName).Cursor()
+		for k, v := c.Seek(rs.Min); isBefore(k, rs.Max); k, v = c.Next() {
 			pairs = append(pairs, Pair{k, v})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pairs, err
+}
+
+// PairMap will return a map of key/value pairs for keys within the range.
+// This only works with buckets whose keys are byte-sliced strings.
+func (rs *RangeScanner) PairMap() (map[string][]byte, error) {
+	pairs := make(map[string][]byte)
+	err := rs.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(rs.BucketName).Cursor()
+		for k, v := c.Seek(rs.Min); isBefore(k, rs.Max); k, v = c.Next() {
+			pairs[string(k)] = v
 		}
 		return nil
 	})
