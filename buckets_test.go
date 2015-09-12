@@ -200,6 +200,105 @@ func TestMapPrefix(t *testing.T) {
 	}
 }
 
+// TestPrefixScanner ensures we can scan prefixes.
+func TestPrefixScanner(t *testing.T) {
+	paths, err := bx.New("paths")
+
+	// k, v pairs to put in `years` bucket
+	putPairs := []struct {
+		k, v string
+	}{
+		{"f/", ""},
+		{"fo/", ""},
+		{"foo/", "foo"},
+		{"foo/bar/", "bar"},
+		{"foo/bar/baz/", "baz"},
+		{"food/", ""},
+		{"good/", ""},
+		{"goo/", ""},
+	}
+
+	// put pairs in `paths` bucket
+	for _, pair := range putPairs {
+		key, val := []byte(pair.k), []byte(pair.v)
+		if err = paths.Put(key, val); err != nil {
+			t.Error(err.Error())
+		}
+	}
+
+	foo, err := paths.NewPrefixScanner([]byte("foo/"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// get keys for paths with `foo` prefix
+	keys, err := foo.Keys()
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// expected keys
+	wantKeys := [][]byte{
+		[]byte("foo/"),
+		[]byte("foo/bar/"),
+		[]byte("foo/bar/baz/"),
+	}
+
+	for i, want := range wantKeys {
+		if got := keys[i]; !bytes.Equal(got, want) {
+			t.Errorf("got %s, want %s", got, got, want, want)
+		}
+	}
+
+	// get values for paths with `foo` prefix
+	values, err := foo.Values()
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// expected values
+	wantValues := [][]byte{
+		[]byte("foo"),
+		[]byte("bar"),
+		[]byte("baz"),
+	}
+
+	for i, want := range wantValues {
+		if got := values[i]; !bytes.Equal(got, want) {
+			t.Errorf("got %s, want %s", got, want)
+		}
+	}
+
+	// get k/v pairs for paths with `foo` prefix
+	pairs, err := foo.Pairs()
+
+	// expected pairs
+	wantPairs := []Pair{
+		Pair{
+			Key:   []byte("foo/"),
+			Value: []byte("foo"),
+		},
+		Pair{
+			Key:   []byte("foo/bar/"),
+			Value: []byte("bar"),
+		},
+		Pair{
+			Key:   []byte("foo/bar/baz/"),
+			Value: []byte("baz"),
+		},
+	}
+
+	for i, want := range wantPairs {
+		got := pairs[i]
+		if !bytes.Equal(got.Key, want.Key) {
+			t.Errorf("got %s, want %s", got.Key, want.Key)
+		}
+		if !bytes.Equal(got.Value, want.Value) {
+			t.Errorf("got %s, want %s", got.Value, want.Value)
+		}
+	}
+}
+
 // TestMapRange ensures that we can apply functions to the k/v pairs
 // of keys within a given range.
 func TestMapRange(t *testing.T) {
@@ -265,85 +364,97 @@ func TestMapRange(t *testing.T) {
 	}
 }
 
-// TestPrefixScanner ...
-func TestPrefixScanner(t *testing.T) {
-	paths, err := bx.New("paths")
+// TestRangeScanner ensures that we can scan ranges.
+func TestRangeScanner(t *testing.T) {
+	years, err := bx.New("years")
+	if err != nil {
+		t.Error(err.Error())
+	}
 
 	// k, v pairs to put in `years` bucket
 	putPairs := []struct {
 		k, v string
 	}{
-		{"f/", ""},
-		{"fo/", ""},
-		{"foo/", "foo"},
-		{"foo/bar/", "bar"},
-		{"foo/bar/baz/", "baz"},
-		{"food/", ""},
-		{"good/", ""},
-		{"goo/", ""},
+		{"1970", "70"},
+		{"1975", "75"},
+		{"1980", "80"},
+		{"1985", "85"},
+		{"1990", "90"}, // min = 1990
+		{"1995", "95"}, // min < 1995 < max
+		{"2000", "00"}, // max = 2000
+		{"2005", "05"},
+		{"2010", "10"},
 	}
 
-	// put pairs in `paths` bucket
+	// put pairs in `years` bucket
 	for _, pair := range putPairs {
 		key, val := []byte(pair.k), []byte(pair.v)
-		if err = paths.Put(key, val); err != nil {
+		if err = years.Put(key, val); err != nil {
 			t.Error(err.Error())
 		}
 	}
 
-	foo, err := paths.NewPrefixScanner([]byte("foo/"))
+	// time range to scan over
+	min := []byte("1990")
+	max := []byte("2000")
+
+	// expected keys and values
+	wantKeys := [][]byte{
+		[]byte("1990"), 
+		[]byte("1995"), 
+		[]byte("2000"), 
+	}
+	wantValues := [][]byte{
+		[]byte("90"), 
+		[]byte("95"), 
+		[]byte("00"), 
+	}
+
+	nineties, err := years.NewRangeScanner(min, max)
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	// get keys for paths with `foo` prefix
-	keys, err := foo.Keys()
-
-	// expected keys
-	wantKeys := [][]byte{
-		[]byte("foo/"),
-		[]byte("foo/bar/"),
-		[]byte("foo/bar/baz/"),
+	keys, err := nineties.Keys()
+	if err != nil {
+		t.Error(err.Error())
 	}
 
 	for i, want := range wantKeys {
 		if got := keys[i]; !bytes.Equal(got, want) {
-			t.Errorf("got %s, want %s", got, got, want, want)
+			t.Errorf("got %s, want %s", got, want)
 		}
 	}
 
-	// get values for paths with `foo` prefix
-	values, err := foo.Values()
-
-	// expected values
-	wantValues := [][]byte{
-		[]byte("foo"),
-		[]byte("bar"),
-		[]byte("baz"),
+	values, err := nineties.Values()
+	if err != nil {
+		t.Error(err.Error())
 	}
-
 	for i, want := range wantValues {
 		if got := values[i]; !bytes.Equal(got, want) {
 			t.Errorf("got %s, want %s", got, want)
 		}
 	}
 
-	// get k/v pairs for paths with `foo` prefix
-	pairs, err := foo.Pairs()
+	// get k/v pairs for keys within range (1995 <= year <= 2000)
+	pairs, err := nineties.Pairs()
+	if err != nil {
+		t.Error(err.Error())
+	}
 
 	// expected pairs
 	wantPairs := []Pair{
 		Pair{
-			Key:   []byte("foo/"),
-			Value: []byte("foo"),
+			Key:   []byte("1990"),
+			Value: []byte("90"),
 		},
 		Pair{
-			Key:   []byte("foo/bar/"),
-			Value: []byte("bar"),
+			Key:   []byte("1995"),
+			Value: []byte("95"),
 		},
 		Pair{
-			Key:   []byte("foo/bar/baz/"),
-			Value: []byte("baz"),
+			Key:   []byte("2000"),
+			Value: []byte("00"),
 		},
 	}
 

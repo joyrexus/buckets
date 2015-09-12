@@ -47,6 +47,12 @@ func (db *DB) Delete(name string) error {
 	})
 }
 
+// A Pair holds a key/value pair.
+type Pair struct {
+	Key []byte
+	Value []byte
+}
+
 // A Bucket holds a set of buckets.
 type Bucket struct {
 	*DB
@@ -124,9 +130,9 @@ func (bk *Bucket) NewPrefixScanner(pre []byte) (*PrefixScanner, error) {
 // Keys will return a slice of keys with prefix.
 func (ps *PrefixScanner) Keys() ([][]byte, error) {
 	var keys [][]byte
+	pre := ps.prefix
 	err := ps.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ps.name).Cursor()
-		pre := ps.prefix
 		for k, _ := c.Seek(pre); bytes.HasPrefix(k, pre); k, _ = c.Next() {
 			keys = append(keys, k)
 		}
@@ -141,9 +147,9 @@ func (ps *PrefixScanner) Keys() ([][]byte, error) {
 // Values will return a slice of values for keys with prefix.
 func (ps *PrefixScanner) Values() ([][]byte, error) {
 	var values [][]byte
+	pre := ps.prefix
 	err := ps.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ps.name).Cursor()
-		pre := ps.prefix
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
 			values = append(values, v)
 		}
@@ -155,18 +161,74 @@ func (ps *PrefixScanner) Values() ([][]byte, error) {
 	return values, err
 }
 
-type Pair struct {
-	Key []byte
-	Value []byte
-}
-
 // Pairs will return a slice of key/value pairs for keys with prefix.
 func (ps *PrefixScanner) Pairs() ([]Pair, error) {
 	var pairs []Pair
+	pre := ps.prefix
 	err := ps.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ps.name).Cursor()
-		pre := ps.prefix
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
+			pairs = append(pairs, Pair{k, v})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pairs, err
+}
+
+// A RangeScanner scans a bucket for keys within a given range.
+type RangeScanner struct {
+	*Bucket
+	min []byte
+	max []byte
+}
+
+// NewRangeScanner initializes a new range scanner.  It takes a `min` and a
+// `max` key for specifying the range paramaters. 
+func (bk *Bucket) NewRangeScanner(min, max []byte) (*RangeScanner, error) {
+	return &RangeScanner{bk, min, max}, nil
+}
+
+// Keys will return a slice of keys within the range.
+func (rs *RangeScanner) Keys() ([][]byte, error) {
+	var keys [][]byte
+	err := rs.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(rs.name).Cursor()
+		for k, _ := c.Seek(rs.min); isBefore(k, rs.max); k, _ = c.Next() {
+			keys = append(keys, k)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return keys, err
+}
+
+// Values will return a slice of values for keys within the range.
+func (rs *RangeScanner) Values() ([][]byte, error) {
+	var values [][]byte
+	err := rs.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(rs.name).Cursor()
+		for k, v := c.Seek(rs.min); isBefore(k, rs.max); k, v = c.Next() {
+			values = append(values, v)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return values, err
+}
+
+// Pairs will return a slice of key/value pairs for keys within the range.
+func (rs *RangeScanner) Pairs() ([]Pair, error) {
+	var pairs []Pair
+	err := rs.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(rs.name).Cursor()
+		for k, v := c.Seek(rs.min); isBefore(k, rs.max); k, v = c.Next() {
 			pairs = append(pairs, Pair{k, v})
 		}
 		return nil
