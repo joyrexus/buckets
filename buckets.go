@@ -47,31 +47,31 @@ func (db *DB) Delete(name string) error {
 	})
 }
 
-// A Bucket contains a db and a bucket name.
+// A Bucket holds a set of buckets.
 type Bucket struct {
-	db   *DB
+	*DB
 	name []byte
 }
 
 // Put inserts value `v` with key `k`.
-func (b *Bucket) Put(k, v []byte) error {
-	return b.db.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(b.name).Put(k, v)
+func (bk *Bucket) Put(k, v []byte) error {
+	return bk.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(bk.name).Put(k, v)
 	})
 }
 
 // Delete removes key `k`.
-func (b *Bucket) Delete(k []byte) error {
-	return b.db.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(b.name).Delete(k)
+func (bk *Bucket) Delete(k []byte) error {
+	return bk.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(bk.name).Delete(k)
 	})
 }
 
 // Get retrieves the value for key `k`.
-func (b *Bucket) Get(k []byte) ([]byte, error) {
+func (bk *Bucket) Get(k []byte) ([]byte, error) {
 	var value []byte
-	err := b.db.View(func(tx *bolt.Tx) error {
-		v := tx.Bucket(b.name).Get(k)
+	err := bk.View(func(tx *bolt.Tx) error {
+		v := tx.Bucket(bk.name).Get(k)
 		if v != nil {
 			value = make([]byte, len(v))
 			copy(value, v)
@@ -82,16 +82,16 @@ func (b *Bucket) Get(k []byte) ([]byte, error) {
 }
 
 // Map will apply `do` on each key/value pair.
-func (b *Bucket) Map(do func(k, v []byte) error) error {
-	return b.db.View(func(tx *bolt.Tx) error {
-		return tx.Bucket(b.name).ForEach(do)
+func (bk *Bucket) Map(do func(k, v []byte) error) error {
+	return bk.View(func(tx *bolt.Tx) error {
+		return tx.Bucket(bk.name).ForEach(do)
 	})
 }
 
 // MapPrefix will apply `do` on each k/v pair of keys with prefix.
-func (b *Bucket) MapPrefix(do func(k, v []byte) error, pre []byte) error {
-	return b.db.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(b.name).Cursor()
+func (bk *Bucket) MapPrefix(do func(k, v []byte) error, pre []byte) error {
+	return bk.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(bk.name).Cursor()
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
 			do(k, v)
 		}
@@ -100,9 +100,9 @@ func (b *Bucket) MapPrefix(do func(k, v []byte) error, pre []byte) error {
 }
 
 // MapRange will apply `do` on each k/v pair of keys within range.
-func (b *Bucket) MapRange(do func(k, v []byte) error, min, max []byte) error {
-	return b.db.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(b.name).Cursor()
+func (bk *Bucket) MapRange(do func(k, v []byte) error, min, max []byte) error {
+	return bk.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(bk.name).Cursor()
 		for k, v := c.Seek(min); isBefore(k, max); k, v = c.Next() {
 			do(k, v)
 		}
@@ -112,20 +112,20 @@ func (b *Bucket) MapRange(do func(k, v []byte) error, min, max []byte) error {
 
 // A PrefixScanner scans a bucket for keys with a given prefix.
 type PrefixScanner struct {
-	bk     *Bucket
+	*Bucket
 	prefix []byte
 }
 
 // NewPrefixScanner initializes a new prefix scanner.
-func (b *Bucket) NewPrefixScanner(pre []byte) (*PrefixScanner, error) {
-	return &PrefixScanner{b, pre}, nil
+func (bk *Bucket) NewPrefixScanner(pre []byte) (*PrefixScanner, error) {
+	return &PrefixScanner{bk, pre}, nil
 }
 
 // Keys will return a slice of keys with prefix.
 func (ps *PrefixScanner) Keys() ([][]byte, error) {
 	var keys [][]byte
-	err := ps.bk.db.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(ps.bk.name).Cursor()
+	err := ps.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(ps.name).Cursor()
 		pre := ps.prefix
 		for k, _ := c.Seek(pre); bytes.HasPrefix(k, pre); k, _ = c.Next() {
 			keys = append(keys, k)
@@ -141,8 +141,8 @@ func (ps *PrefixScanner) Keys() ([][]byte, error) {
 // Values will return a slice of values for keys with prefix.
 func (ps *PrefixScanner) Values() ([][]byte, error) {
 	var values [][]byte
-	err := ps.bk.db.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(ps.bk.name).Cursor()
+	err := ps.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(ps.name).Cursor()
 		pre := ps.prefix
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
 			values = append(values, v)
@@ -163,8 +163,8 @@ type Pair struct {
 // Pairs will return a slice of key/value pairs for keys with prefix.
 func (ps *PrefixScanner) Pairs() ([]Pair, error) {
 	var pairs []Pair
-	err := ps.bk.db.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(ps.bk.name).Cursor()
+	err := ps.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(ps.name).Cursor()
 		pre := ps.prefix
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
 			pairs = append(pairs, Pair{k, v})
