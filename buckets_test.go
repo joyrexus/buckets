@@ -14,9 +14,9 @@ var (
 )
 
 // TestOpen ensures that a bux db that can be opened/closed without error.
-func TestOpen(t *testing.T) {
+func TestOpenDB(t *testing.T) {
 	temp := tempFilePath()
-	b, err := Open(temp)
+	b, err := OpenDB(temp)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -384,7 +384,7 @@ func TestMain(m *testing.M) {
 func setup() {
 	var err error
 	path = tempFilePath()
-	bx, err = Open(path)
+	bx, err = OpenDB(path)
 	// log.Printf("Temp file created: %v", path)
 	if err != nil {
 		log.Fatal(err)

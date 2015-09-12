@@ -13,9 +13,9 @@ type DB struct {
 	*bolt.DB
 }
 
-// Open creates/opens a bolt database at the specified path.
+// OpenDB creates/opens a bolt database at the specified path.
 // The returned DB inherits all methods from `bolt.DB`.
-func Open(path string) (*DB, error) {
+func OpenDB(path string) (*DB, error) {
 	config := &bolt.Options{Timeout: 1 * time.Second}
 	db, err := bolt.Open(path, 0600, config)
 	if err != nil {
