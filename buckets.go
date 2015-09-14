@@ -61,6 +61,19 @@ func (bk *Bucket) Put(k, v []byte) error {
 	})
 }
 
+// Insert iterates over a slice of k/v pairs, putting each item in
+// the bucket as part of a single transaction.  For large insertions,
+// be sure to pre-sort your items (by Key in byte-sorted order), which
+// will result in much more efficient insertion times and storage costs.
+func (bk *Bucket) Insert(items []struct{ Key, Value []byte }) error {
+	return bk.db.Update(func(tx *bolt.Tx) error {
+		for _, item := range items {
+			tx.Bucket(bk.Name).Put(item.Key, item.Value)
+		}
+		return nil
+	})
+}
+
 // Delete removes key `k`.
 func (bk *Bucket) Delete(k []byte) error {
 	return bk.db.Update(func(tx *bolt.Tx) error {
@@ -81,12 +94,13 @@ func (bk *Bucket) Get(k []byte) (value []byte, err error) {
 	return value, err
 }
 
-// Insert iterates over a slice of k/v pairs, putting each item in
-// the bucket as part of a single transaction.
-func (bk *Bucket) Insert(items []struct{Key, Value []byte}) error {
-	return bk.db.Update(func(tx *bolt.Tx) error {
-		for _, item := range items {
-			tx.Bucket(bk.Name).Put(item.Key, item.Value)
+// Items returns a slice of key/value pairs.  Each k/v pair in the slice
+// is of type Item (`struct{ Key, Value []byte }`).
+func (bk *Bucket) Items() (items []Item, err error) {
+	return items, bk.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(bk.Name).Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			items = append(items, Item{k, v})
 		}
 		return nil
 	})

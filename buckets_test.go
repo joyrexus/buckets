@@ -13,7 +13,7 @@ var (
 	path string // file path to temp db
 )
 
-// Ensure that we can put stuff in a bucket.
+// Ensure we can put an item in a bucket.
 func TestPut(t *testing.T) {
 	things, err := bx.New([]byte("things"))
 	if err != nil {
@@ -22,7 +22,7 @@ func TestPut(t *testing.T) {
 
 	// k, v pairs to put in `things` bucket
 	pairs := []struct {
-		k, v string
+		key, value string
 	}{
 		{"A", "alpha"},
 		{"B", "beta"},
@@ -30,8 +30,8 @@ func TestPut(t *testing.T) {
 	}
 
 	for _, pair := range pairs {
-		key, val := []byte(pair.k), []byte(pair.v)
-		if err = things.Put(key, val); err != nil {
+		k, v := []byte(pair.key), []byte(pair.value)
+		if err = things.Put(k, v); err != nil {
 			t.Error(err.Error())
 		}
 	}
@@ -84,6 +84,50 @@ func TestDelete(t *testing.T) {
 
 	if err = things.Delete(k); err != nil {
 		t.Error(err.Error())
+	}
+}
+
+// Ensure we can insert items into a bucket and get them back out.
+func TestInsert(t *testing.T) {
+	paths, err := bx.New([]byte("paths"))
+
+	// k, v pairs to put in `paths` bucket
+	items := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("foo/"), []byte("foo")},
+		{[]byte("foo/bar/"), []byte("bar")},
+		{[]byte("foo/bar/baz/"), []byte("baz")},
+		{[]byte("food/"), []byte("")},
+		{[]byte("good/"), []byte("")},
+		{[]byte("goo/"), []byte("")},
+	}
+
+	err = paths.Insert(items)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	gotItems, err := paths.Items()
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// expected k/v mapping
+	expected := map[string][]byte{
+		"foo/":         []byte("foo"),
+		"foo/bar/":     []byte("bar"),
+		"foo/bar/baz/": []byte("baz"),
+		"food/":        []byte(""),
+		"good/":        []byte(""),
+		"goo/":         []byte(""),
+	}
+
+	for _, item := range gotItems {
+		want := expected[string(item.Key)]
+		if !bytes.Equal(item.Value, want) {
+			t.Errorf("got %v, want %v", item.Value, want)
+		}
 	}
 }
 
@@ -177,11 +221,78 @@ func TestMapPrefix(t *testing.T) {
 	}
 }
 
+// Ensure we can apply functions to the k/v pairs
+// of keys within a given range.
+func TestMapRange(t *testing.T) {
+	years, err := bx.New([]byte("years"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// k, v pairs to put in `years` bucket
+	pairs := []struct {
+		k, v string
+	}{
+		{"1970", "70"},
+		{"1975", "75"},
+		{"1980", "80"},
+		{"1985", "85"},
+		{"1990", "90"}, // min = 1990
+		{"1995", "95"}, // min < 1995 < max
+		{"2000", "00"}, // max = 2000
+		{"2005", "05"},
+		{"2010", "10"},
+	}
+
+	// put pairs in `years` bucket
+	for _, pair := range pairs {
+		key, val := []byte(pair.k), []byte(pair.v)
+		if err = years.Put(key, val); err != nil {
+			t.Error(err.Error())
+		}
+	}
+
+	// time range to map over
+	min := []byte("1990")
+	max := []byte("2000")
+
+	// expected keys and values
+	wantKeys := []string{"1990", "1995", "2000"}
+	wantValues := []string{"90", "95", "00"}
+
+	// collect keys and values of matched keys in `do` func
+	var keys, values []string
+
+	// anon func to map over keys within time range
+	do := func(k, v []byte) error {
+		keys = append(keys, string(k))
+		values = append(values, string(v))
+		return nil
+	}
+
+	if err := years.MapRange(do, min, max); err != nil {
+		t.Error(err.Error())
+	}
+
+	for i, want := range wantKeys {
+		if got := keys[i]; want != got {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	}
+	for i, want := range wantValues {
+		if got := values[i]; want != got {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	}
+}
+
+/* --- PREFIX SCANNER TESTS --- */
+
 // Ensure we can scan prefixes.
 func TestPrefixScanner(t *testing.T) {
 	paths, err := bx.New([]byte("paths"))
 
-	// k, v pairs to put in `years` bucket
+	// k, v pairs to put in `paths` bucket
 	putPairs := []struct {
 		k, v string
 	}{
@@ -310,70 +421,7 @@ func TestPrefixScanner(t *testing.T) {
 	}
 }
 
-// Ensure we can apply functions to the k/v pairs
-// of keys within a given range.
-func TestMapRange(t *testing.T) {
-	years, err := bx.New([]byte("years"))
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	// k, v pairs to put in `years` bucket
-	pairs := []struct {
-		k, v string
-	}{
-		{"1970", "70"},
-		{"1975", "75"},
-		{"1980", "80"},
-		{"1985", "85"},
-		{"1990", "90"}, // min = 1990
-		{"1995", "95"}, // min < 1995 < max
-		{"2000", "00"}, // max = 2000
-		{"2005", "05"},
-		{"2010", "10"},
-	}
-
-	// put pairs in `years` bucket
-	for _, pair := range pairs {
-		key, val := []byte(pair.k), []byte(pair.v)
-		if err = years.Put(key, val); err != nil {
-			t.Error(err.Error())
-		}
-	}
-
-	// time range to map over
-	min := []byte("1990")
-	max := []byte("2000")
-
-	// expected keys and values
-	wantKeys := []string{"1990", "1995", "2000"}
-	wantValues := []string{"90", "95", "00"}
-
-	// collect keys and values of matched keys in `do` func
-	var keys, values []string
-
-	// anon func to map over keys within time range
-	do := func(k, v []byte) error {
-		keys = append(keys, string(k))
-		values = append(values, string(v))
-		return nil
-	}
-
-	if err := years.MapRange(do, min, max); err != nil {
-		t.Error(err.Error())
-	}
-
-	for i, want := range wantKeys {
-		if got := keys[i]; want != got {
-			t.Errorf("got %v, want %v", got, want)
-		}
-	}
-	for i, want := range wantValues {
-		if got := values[i]; want != got {
-			t.Errorf("got %v, want %v", got, want)
-		}
-	}
-}
+/* --- RANGE SCANNER TESTS --- */
 
 // Ensures we can scan ranges.
 func TestRangeScanner(t *testing.T) {
