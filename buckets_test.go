@@ -257,27 +257,27 @@ func TestPrefixScanner(t *testing.T) {
 		}
 	}
 
-	// get k/v pairs for paths with `foo` prefix
-	pairs, err := foo.Pairs()
+	// get k/v pairs for keys with `foo` prefix
+	items, err := foo.Items()
 
-	// expected pairs
-	wantPairs := []Pair{
-		Pair{
+	// expected items
+	wantItems := []Item{
+		Item{
 			Key:   []byte("foo/"),
 			Value: []byte("foo"),
 		},
-		Pair{
+		Item{
 			Key:   []byte("foo/bar/"),
 			Value: []byte("bar"),
 		},
-		Pair{
+		Item{
 			Key:   []byte("foo/bar/baz/"),
 			Value: []byte("baz"),
 		},
 	}
 
-	for i, want := range wantPairs {
-		got := pairs[i]
+	for i, want := range wantItems {
+		got := items[i]
 		if !bytes.Equal(got.Key, want.Key) {
 			t.Errorf("got %s, want %s", got.Key, want.Key)
 		}
@@ -286,21 +286,21 @@ func TestPrefixScanner(t *testing.T) {
 		}
 	}
 
-	// expected items
-	wantItems := map[string][]byte{
+	// expected mapping
+	wantMapping := map[string][]byte{
 		"foo/":         []byte("foo"),
 		"foo/bar/":     []byte("bar"),
 		"foo/bar/baz/": []byte("baz"),
 	}
 
-	// get map of k/v pairs for paths with `foo` prefix
-	items, err := foo.Items()
+	// get mapping of k/v pairs for keys with `foo` prefix
+	gotMapping, err := foo.ItemMapping()
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	for key, want := range wantItems {
-		got, ok := items[key]
+	for key, want := range wantMapping {
+		got, ok := gotMapping[key]
 		if ok == false {
 			t.Errorf("missing wanted key: %s", key)
 		}
@@ -461,29 +461,29 @@ func TestRangeScanner(t *testing.T) {
 	}
 
 	// get k/v pairs for keys within range (1995 <= year <= 2000)
-	pairs, err := nineties.Pairs()
+	items, err := nineties.Items()
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	// expected pairs
-	wantPairs := []Pair{
-		Pair{
+	// expected items
+	wantItems := []Item{
+		Item{
 			Key:   []byte("1990"),
 			Value: []byte("90"),
 		},
-		Pair{
+		Item{
 			Key:   []byte("1995"),
 			Value: []byte("95"),
 		},
-		Pair{
+		Item{
 			Key:   []byte("2000"),
 			Value: []byte("00"),
 		},
 	}
 
-	for i, want := range wantPairs {
-		got := pairs[i]
+	for i, want := range wantItems {
+		got := items[i]
 		if !bytes.Equal(got.Key, want.Key) {
 			t.Errorf("got %s, want %s", got.Key, want.Key)
 		}
@@ -492,21 +492,21 @@ func TestRangeScanner(t *testing.T) {
 		}
 	}
 
-	// expected items
-	wantItems := map[string][]byte{
+	// expected mapping
+	wantMapping := map[string][]byte{
 		"1990": []byte("90"),
 		"1995": []byte("95"),
 		"2000": []byte("00"),
 	}
 
-	// get map of k/v pairs for keys within range (1995 <= year <= 2000)
-	items, err := nineties.Items()
+	// get mapping of k/v pairs for keys within range (1995 <= year <= 2000)
+	gotMapping, err := nineties.ItemMapping()
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	for key, want := range wantItems {
-		got, ok := items[key]
+	for key, want := range wantMapping {
+		got, ok := gotMapping[key]
 		if ok == false {
 			t.Errorf("missing wanted key: %s", key)
 		}
