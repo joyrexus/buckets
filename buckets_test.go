@@ -208,6 +208,17 @@ func TestPrefixScanner(t *testing.T) {
 		t.Error(err.Error())
 	}
 
+	// expected count of items in range
+	wantCount := 3
+
+	count, err := foo.Count()
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if count != wantCount {
+		t.Errorf("got %v, want %v", count, wantCount)
+	}
+
 	// get keys for paths with `foo` prefix
 	keys, err := foo.Keys()
 	if err != nil {
@@ -275,21 +286,21 @@ func TestPrefixScanner(t *testing.T) {
 		}
 	}
 
-	// expected pairs
-	wantPairMap := map[string][]byte{
+	// expected items
+	wantItems := map[string][]byte{
 		"foo/":         []byte("foo"),
 		"foo/bar/":     []byte("bar"),
 		"foo/bar/baz/": []byte("baz"),
 	}
 
 	// get map of k/v pairs for paths with `foo` prefix
-	pairMap, err := foo.PairMap()
+	items, err := foo.Items()
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	for key, want := range wantPairMap {
-		got, ok := pairMap[key]
+	for key, want := range wantItems {
+		got, ok := items[key]
 		if ok == false {
 			t.Errorf("missing wanted key: %s", key)
 		}
@@ -398,12 +409,17 @@ func TestRangeScanner(t *testing.T) {
 	min := []byte("1990")
 	max := []byte("2000")
 
-	// expected keys and values
+	// expected count of items in range
+	wantCount := 3
+
+	// expected keys
 	wantKeys := [][]byte{
 		[]byte("1990"),
 		[]byte("1995"),
 		[]byte("2000"),
 	}
+
+	// expected values
 	wantValues := [][]byte{
 		[]byte("90"),
 		[]byte("95"),
@@ -413,6 +429,14 @@ func TestRangeScanner(t *testing.T) {
 	nineties, err := years.NewRangeScanner(min, max)
 	if err != nil {
 		t.Error(err.Error())
+	}
+
+	count, err := nineties.Count()
+	if err != nil {
+		t.Error(err.Error())
+	}
+	if count != wantCount {
+		t.Errorf("got %v, want %v", count, wantCount)
 	}
 
 	keys, err := nineties.Keys()
@@ -468,21 +492,21 @@ func TestRangeScanner(t *testing.T) {
 		}
 	}
 
-	// expected pairs
-	wantPairMap := map[string][]byte{
+	// expected items
+	wantItems := map[string][]byte{
 		"1990": []byte("90"),
 		"1995": []byte("95"),
 		"2000": []byte("00"),
 	}
 
 	// get map of k/v pairs for keys within range (1995 <= year <= 2000)
-	pairMap, err := nineties.PairMap()
+	items, err := nineties.Items()
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	for key, want := range wantPairMap {
-		got, ok := pairMap[key]
+	for key, want := range wantItems {
+		got, ok := items[key]
 		if ok == false {
 			t.Errorf("missing wanted key: %s", key)
 		}
@@ -508,7 +532,7 @@ func TestMain(m *testing.M) {
 func setup() {
 	var err error
 	path = tempFilePath()
-	bx, err = OpenDB(path)
+	bx, err = Open(path)
 	// log.Printf("Temp file created: %v", path)
 	if err != nil {
 		log.Fatal(err)
