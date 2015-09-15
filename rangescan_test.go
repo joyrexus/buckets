@@ -12,53 +12,46 @@ func TestRangeScanner(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	// k, v pairs to put in `years` bucket
-	putPairs := []struct {
-		k, v string
+	// items to put in `years` bucket
+	yearItems := []struct {
+		Key, Value []byte
 	}{
-		{"1970", "70"},
-		{"1975", "75"},
-		{"1980", "80"},
-		{"1985", "85"},
-		{"1990", "90"}, // min = 1990
-		{"1995", "95"}, // min < 1995 < max
-		{"2000", "00"}, // max = 2000
-		{"2005", "05"},
-		{"2010", "10"},
+		{[]byte("1970"), []byte("70")},
+		{[]byte("1975"), []byte("75")},
+		{[]byte("1980"), []byte("80")},
+		{[]byte("1985"), []byte("85")},
+		{[]byte("1990"), []byte("90")}, // min = 1990
+		{[]byte("1995"), []byte("95")}, // min < 1995 < max
+		{[]byte("2000"), []byte("00")}, // max = 2000
+		{[]byte("2005"), []byte("05")},
+		{[]byte("2010"), []byte("10")},
 	}
 
-	// put pairs in `years` bucket
-	for _, pair := range putPairs {
-		key, val := []byte(pair.k), []byte(pair.v)
-		if err = years.Put(key, val); err != nil {
-			t.Error(err.Error())
-		}
+	// insert items into `years` bucket
+	if err = years.Insert(yearItems); err != nil {
+		t.Error(err.Error())
 	}
 
 	// time range to scan over
 	min := []byte("1990")
 	max := []byte("2000")
 
-	// expected count of items in range
-	wantCount := 3
-
-	// expected keys
-	wantKeys := [][]byte{
-		[]byte("1990"),
-		[]byte("1995"),
-		[]byte("2000"),
-	}
-
-	// expected values
-	wantValues := [][]byte{
-		[]byte("90"),
-		[]byte("95"),
-		[]byte("00"),
-	}
-
 	nineties, err := years.NewRangeScanner(min, max)
 	if err != nil {
 		t.Error(err.Error())
+	}
+
+	// expected count of items in range
+	wantCount := 3
+
+	// expected items
+	wantItems := []struct {
+		Key   []byte
+		Value []byte
+	}{
+		{[]byte("1990"), []byte("90")},
+		{[]byte("1995"), []byte("95")},
+		{[]byte("2000"), []byte("00")},
 	}
 
 	count, err := nineties.Count()
@@ -74,9 +67,9 @@ func TestRangeScanner(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	for i, want := range wantKeys {
-		if got := keys[i]; !bytes.Equal(got, want) {
-			t.Errorf("got %s, want %s", got, want)
+	for i, want := range wantItems {
+		if got := keys[i]; !bytes.Equal(got, want.Key) {
+			t.Errorf("got %s, want %s", got, want.Key)
 		}
 	}
 
@@ -84,9 +77,10 @@ func TestRangeScanner(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	for i, want := range wantValues {
-		if got := values[i]; !bytes.Equal(got, want) {
-			t.Errorf("got %s, want %s", got, want)
+
+	for i, want := range wantItems {
+		if got := values[i]; !bytes.Equal(got, want.Value) {
+			t.Errorf("got %s, want %s", got, want.Value)
 		}
 	}
 
@@ -94,25 +88,6 @@ func TestRangeScanner(t *testing.T) {
 	items, err := nineties.Items()
 	if err != nil {
 		t.Error(err.Error())
-	}
-
-	// expected items
-	wantItems := []struct{
-		Key []byte
-		Value []byte
-	}{
-		{
-			Key:   []byte("1990"),
-			Value: []byte("90"),
-		},
-		{
-			Key:   []byte("1995"),
-			Value: []byte("95"),
-		},
-		{
-			Key:   []byte("2000"),
-			Value: []byte("00"),
-		},
 	}
 
 	for i, want := range wantItems {
