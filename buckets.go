@@ -8,8 +8,9 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-// A buckets DB is a set of buckets.  It's basically a wrapper
-// around a bolt database, embedding the bolt.DB type.
+// A buckets DB is a set of buckets.
+//
+// A DB embeds the exposed bolt.DB methods.
 type DB struct {
 	*bolt.DB
 }
@@ -152,12 +153,12 @@ func (bk *Bucket) NewRangeScanner(min, max []byte) (*RangeScanner, error) {
 type PrefixScanner struct {
 	db         *DB
 	BucketName []byte
-	prefix     []byte
+	Prefix     []byte
 }
 
 // Map applies `do` on each key/value pair for keys with prefix.
 func (ps *PrefixScanner) Map(do func(k, v []byte) error) error {
-	pre := ps.prefix
+	pre := ps.Prefix
 	return ps.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ps.BucketName).Cursor()
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, _ = c.Next() {
@@ -169,7 +170,7 @@ func (ps *PrefixScanner) Map(do func(k, v []byte) error) error {
 
 // Count returns a count of the keys with prefix.
 func (ps *PrefixScanner) Count() (count int, err error) {
-	pre := ps.prefix
+	pre := ps.Prefix
 	err = ps.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ps.BucketName).Cursor()
 		for k, _ := c.Seek(pre); bytes.HasPrefix(k, pre); k, _ = c.Next() {
@@ -185,7 +186,7 @@ func (ps *PrefixScanner) Count() (count int, err error) {
 
 // Keys returns a slice of keys with prefix.
 func (ps *PrefixScanner) Keys() (keys [][]byte, err error) {
-	pre := ps.prefix
+	pre := ps.Prefix
 	err = ps.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ps.BucketName).Cursor()
 		for k, _ := c.Seek(pre); bytes.HasPrefix(k, pre); k, _ = c.Next() {
@@ -201,7 +202,7 @@ func (ps *PrefixScanner) Keys() (keys [][]byte, err error) {
 
 // Values returns a slice of values for keys with prefix.
 func (ps *PrefixScanner) Values() (values [][]byte, err error) {
-	pre := ps.prefix
+	pre := ps.Prefix
 	err = ps.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ps.BucketName).Cursor()
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
@@ -217,7 +218,7 @@ func (ps *PrefixScanner) Values() (values [][]byte, err error) {
 
 // Items returns a slice of key/value pairs for keys with prefix.
 func (ps *PrefixScanner) Items() (items []Item, err error) {
-	pre := ps.prefix
+	pre := ps.Prefix
 	err = ps.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ps.BucketName).Cursor()
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
@@ -234,7 +235,7 @@ func (ps *PrefixScanner) Items() (items []Item, err error) {
 // ItemMapping returns a map of key/value pairs for keys with prefix.
 // This only works with buckets whose keys are byte-sliced strings.
 func (ps *PrefixScanner) ItemMapping() (map[string][]byte, error) {
-	pre := ps.prefix
+	pre := ps.Prefix
 	items := make(map[string][]byte)
 	err := ps.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(ps.BucketName).Cursor()
