@@ -124,7 +124,7 @@ func TestInsert(t *testing.T) {
 
 // Show we can insert items into a bucket and get them back out.
 func ExampleBucket_Insert() {
-	paths, _ := bx.New([]byte("paths"))
+	letters, _ := bx.New([]byte("letters"))
 
 	// Setup items to insert in `paths` bucket.
 	items := []struct {
@@ -135,13 +135,13 @@ func ExampleBucket_Insert() {
 		{[]byte("C"), []byte("gamma")},
 	}
 
-	// Insert items into `paths` bucket.
-	if err := paths.Insert(items); err != nil {
+	// Insert items into `letters` bucket.
+	if err := letters.Insert(items); err != nil {
 		fmt.Println("could not insert items!")
 	}
 
 	// Get items back out in separate read-only transaction.
-	results, _ := paths.Items()
+	results, _ := letters.Items()
 
 	for _, item := range results {
 		fmt.Printf("%s -> %s\n", item.Key, item.Value)
@@ -153,11 +153,29 @@ func ExampleBucket_Insert() {
 	// C -> gamma
 }
 
-/* Ensure that we can apply functions to each k/v pair.
+// Ensure that we can apply functions to each k/v pair.
 func TestMap(t *testing.T) {
-	things, err := bx.New([]byte("things"))
+	// Delete any existing bucket named "letters".
+	bx.Delete([]byte("letters"))
+
+	// Create a new bucket.
+	letters, err := bx.New([]byte("letters"))
 	if err != nil {
 		t.Error(err.Error())
+	}
+
+	// Setup items to insert.
+	items := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("A"), []byte("alpha")},
+		{[]byte("B"), []byte("beta")},
+		{[]byte("C"), []byte("gamma")},
+	}
+
+	// Insert items into `letters` bucket.
+	if err := letters.Insert(items); err != nil {
+		fmt.Println("could not insert items!")
 	}
 
 	wantKeys := []string{"A", "B", "C"}
@@ -169,7 +187,7 @@ func TestMap(t *testing.T) {
 		values = append(values, string(v))
 		return nil
 	}
-	if err := things.Map(do); err != nil {
+	if err := letters.Map(do); err != nil {
 		t.Error(err.Error())
 	}
 
@@ -184,7 +202,6 @@ func TestMap(t *testing.T) {
 		}
 	}
 }
-*/
 
 // Ensure that we can apply a function to the k/v pairs
 // of keys with a given prefix.
