@@ -102,6 +102,13 @@ func ExampleBucket() {
 		return nil
 	}
 	hits.Map(do)
+	// outputs ...
+	// hits to /bar: 10
+	// hits to /baz: 10
+	// hits to /foo: 10
+	// hits to /quux: 10
+	// hits to /thud: 10
+	// hits to /xyzzy: 10
 
 	// Output:
 	// hits to /bar: 10
