@@ -9,26 +9,22 @@ import (
 func TestPrefixScanner(t *testing.T) {
 	paths, err := bx.New([]byte("paths"))
 
-	// k, v pairs to put in `paths` bucket
-	putPairs := []struct {
-		k, v string
+	// items to put in `paths` bucket
+	pathItems := []struct {
+		Key, Value []byte
 	}{
-		{"f/", ""},
-		{"fo/", ""},
-		{"foo/", "foo"},
-		{"foo/bar/", "bar"},
-		{"foo/bar/baz/", "baz"},
-		{"food/", ""},
-		{"good/", ""},
-		{"goo/", ""},
+		{[]byte("f/"), []byte("")},
+		{[]byte("fo/"), []byte("")},
+		{[]byte("foo/"), []byte("foo")},
+		{[]byte("foo/bar/"), []byte("bar")},
+		{[]byte("foo/bar/baz/"), []byte("baz")},
+		{[]byte("food/"), []byte("")},
+		{[]byte("good/"), []byte("")},
+		{[]byte("goo/"), []byte("")},
 	}
 
-	// put pairs in `paths` bucket
-	for _, pair := range putPairs {
-		key, val := []byte(pair.k), []byte(pair.v)
-		if err = paths.Put(key, val); err != nil {
-			t.Error(err.Error())
-		}
+	if err = paths.Insert(pathItems); err != nil {
+		t.Error(err.Error())
 	}
 
 	foo, err := paths.NewPrefixScanner([]byte("foo/"))
@@ -36,15 +32,25 @@ func TestPrefixScanner(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	// expected count of items in range
-	wantCount := 3
+	// expected items in `foo`
+	wantItems := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("foo/"), []byte("foo")},
+		{[]byte("foo/bar/"), []byte("bar")},
+		{[]byte("foo/bar/baz/"), []byte("baz")},
+	}
 
-	count, err := foo.Count()
+	// expected count of items in range
+	want := len(wantItems)
+
+	got, err := foo.Count()
 	if err != nil {
 		t.Error(err.Error())
 	}
-	if count != wantCount {
-		t.Errorf("got %v, want %v", count, wantCount)
+
+	if got != want {
+		t.Errorf("got %v, want %v", got, want)
 	}
 
 	// get keys for paths with `foo` prefix
@@ -53,16 +59,9 @@ func TestPrefixScanner(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	// expected keys
-	wantKeys := [][]byte{
-		[]byte("foo/"),
-		[]byte("foo/bar/"),
-		[]byte("foo/bar/baz/"),
-	}
-
-	for i, want := range wantKeys {
-		if got := keys[i]; !bytes.Equal(got, want) {
-			t.Errorf("got %s, want %s", got, got, want, want)
+	for i, want := range wantItems {
+		if got := keys[i]; !bytes.Equal(got, want.Key) {
+			t.Errorf("got %s, want %s", got, want.Key)
 		}
 	}
 
@@ -72,39 +71,14 @@ func TestPrefixScanner(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	// expected values
-	wantValues := [][]byte{
-		[]byte("foo"),
-		[]byte("bar"),
-		[]byte("baz"),
-	}
-
-	for i, want := range wantValues {
-		if got := values[i]; !bytes.Equal(got, want) {
-			t.Errorf("got %s, want %s", got, want)
+	for i, want := range wantItems {
+		if got := values[i]; !bytes.Equal(got, want.Value) {
+			t.Errorf("got %s, want %s", got, want.Value)
 		}
 	}
 
 	// get k/v pairs for keys with `foo` prefix
 	items, err := foo.Items()
-
-	// expected items
-	wantItems := []struct{ 
-		Key, Value []byte 
-	}{
-		{
-			Key:   []byte("foo/"),
-			Value: []byte("foo"),
-		},
-		{
-			Key:   []byte("foo/bar/"),
-			Value: []byte("bar"),
-		},
-		{
-			Key:   []byte("foo/bar/baz/"),
-			Value: []byte("baz"),
-		},
-	}
 
 	for i, want := range wantItems {
 		got := items[i]

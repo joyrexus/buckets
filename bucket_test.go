@@ -48,8 +48,8 @@ func ExampleBucket_Put() {
 	// The value of "A" in `things` is "alpha"
 }
 
-// Ensure that we can get stuff from a bucket.
-func TestGet(t *testing.T) {
+// Ensure that a bucket that gets a non-existent key returns nil.
+func TestGetMissing(t *testing.T) {
 	things, err := bx.New([]byte("things"))
 	if err != nil {
 		t.Error(err.Error())
@@ -58,26 +58,6 @@ func TestGet(t *testing.T) {
 	key := []byte("missing")
 	if got, _ := things.Get(key); got != nil {
 		t.Errorf("not expecting value for key %q: got %q", key, got)
-	}
-
-	// k, v pairs to get/check from `things` bucket
-	pairs := []struct {
-		k, v string
-	}{
-		{"A", "alpha"},
-		{"B", "beta"},
-		{"C", "gamma"},
-	}
-
-	for _, pair := range pairs {
-		key, val := []byte(pair.k), []byte(pair.v)
-		got, err := things.Get(key)
-		if err != nil {
-			t.Error(err.Error())
-		}
-		if !bytes.Equal(got, val) {
-			t.Errorf("got %v, want %v", got, val)
-		}
 	}
 }
 
@@ -173,7 +153,7 @@ func ExampleBucket_Insert() {
 	// C -> gamma
 }
 
-// Ensure that we can apply functions to each k/v pair.
+/* Ensure that we can apply functions to each k/v pair.
 func TestMap(t *testing.T) {
 	things, err := bx.New([]byte("things"))
 	if err != nil {
@@ -204,6 +184,7 @@ func TestMap(t *testing.T) {
 		}
 	}
 }
+*/
 
 // Ensure that we can apply a function to the k/v pairs
 // of keys with a given prefix.
