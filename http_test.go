@@ -16,14 +16,14 @@ import (
 // Set this to see how the counts are actually updated.
 const verbose = false
 
-// Counter updates a counter in Bolt for every URL path requested.
+// Counter updates a the hits bucket for every URL path requested.
 type counter struct {
 	hits *buckets.Bucket
 }
 
+// Our handler communicates the new count from a successful database
+// transaction.
 func (c counter) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	// Communicates the new count from a successful database
-	// transaction.
 	key := []byte(req.URL.String())
 
 	// Decode handles key not found for us.
@@ -39,6 +39,7 @@ func (c counter) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		log.Printf("server: %s: %d", req.URL.String(), count)
 	}
 
+	// Reply with the new count .
 	rw.Header().Set("Content-Type", "application/octet-stream")
 	fmt.Fprintf(rw, "%d\n", count)
 }
