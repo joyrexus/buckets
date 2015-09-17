@@ -137,14 +137,14 @@ func (bk *Bucket) MapRange(do func(k, v []byte) error, min, max []byte) error {
 }
 
 // NewPrefixScanner initializes a new prefix scanner.
-func (bk *Bucket) NewPrefixScanner(pre []byte) (*PrefixScanner, error) {
-	return &PrefixScanner{bk.db, bk.Name, pre}, nil
+func (bk *Bucket) NewPrefixScanner(pre []byte) *PrefixScanner {
+	return &PrefixScanner{bk.db, bk.Name, pre}
 }
 
 // NewRangeScanner initializes a new range scanner.  It takes a `min` and a
 // `max` key for specifying the range paramaters.
-func (bk *Bucket) NewRangeScanner(min, max []byte) (*RangeScanner, error) {
-	return &RangeScanner{bk.db, bk.Name, min, max}, nil
+func (bk *Bucket) NewRangeScanner(min, max []byte) *RangeScanner {
+	return &RangeScanner{bk.db, bk.Name, min, max}
 }
 
 /* --- PREFIX SCANNER --- */

@@ -116,8 +116,6 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request, _ mux.Params) {
 
 // post handles post requests to create a todo item.
 func (s *Service) post(w http.ResponseWriter, r *http.Request, _ mux.Params) {
-	key := []byte(r.URL.String())
-
 	// Read request body's json payload into buffer.
 	b, err := ioutil.ReadAll(r.Body)
 	todo, err := decode(b)
@@ -125,7 +123,10 @@ func (s *Service) post(w http.ResponseWriter, r *http.Request, _ mux.Params) {
 		http.Error(w, err.Error(), 500)
 	}
 
-	// Put key/buffer into todos bucket
+	// Use the url path as key.
+	key := []byte(r.URL.String())
+
+	// Put key/buffer into todos bucket.
 	if err := s.todos.Put(key, b); err != nil {
 		http.Error(w, err.Error(), 500)
 		return

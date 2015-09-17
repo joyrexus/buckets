@@ -36,10 +36,7 @@ func TestRangeScanner(t *testing.T) {
 	min := []byte("1990")
 	max := []byte("2000")
 
-	nineties, err := years.NewRangeScanner(min, max)
-	if err != nil {
-		t.Error(err.Error())
-	}
+	nineties := years.NewRangeScanner(min, max)
 
 	// expected count of items in range
 	wantCount := 3

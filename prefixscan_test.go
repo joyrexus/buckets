@@ -27,10 +27,7 @@ func TestPrefixScanner(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	foo, err := paths.NewPrefixScanner([]byte("foo/"))
-	if err != nil {
-		t.Error(err.Error())
-	}
+	foo := paths.NewPrefixScanner([]byte("foo/"))
 
 	// expected items in `foo`
 	wantItems := []struct {
