@@ -84,7 +84,7 @@ type Todo struct {
 	Day  string
 }
 
-/* -- SERVICE / CONTROLLER / HTTPROUTER HANDLES -- */
+/* -- SERVICE -- */
 
 // NewService initializes a new instance of our service.
 func NewService(bk *buckets.Bucket) *Service {
@@ -94,6 +94,11 @@ func NewService(bk *buckets.Bucket) *Service {
 // This service handles requests for todo items.  The items are stored
 // in a todos bucket.  The request URLs are used as bucket keys and the
 // raw json payload as values.
+//
+// In MVC parlance, our service would be called a "controller".  We use
+// it to define "handle" methods for our router. Note that since we're using
+// `httprouter` (abbreviated as `mux` when imported) as our router, each
+// service method is a `httprouter.Handle` rather than a `http.HandlerFunc`.
 type Service struct {
 	todos *buckets.Bucket
 }
@@ -109,7 +114,7 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request, _ mux.Params) {
 	w.Write(value)
 }
 
-// get handles post requests to create a todo item.
+// post handles post requests to create a todo item.
 func (s *Service) post(w http.ResponseWriter, r *http.Request, _ mux.Params) {
 	key := []byte(r.URL.String())
 
@@ -134,7 +139,7 @@ func (s *Service) post(w http.ResponseWriter, r *http.Request, _ mux.Params) {
 	fmt.Fprintf(w, "put todo for %s: %s\n", key, todo)
 }
 
-/* -- CLIENT --*/
+/* -- CLIENT -- */
 
 // Our http client for sending requests.
 type Client struct{}
