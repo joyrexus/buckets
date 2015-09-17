@@ -10,8 +10,7 @@ for persistence in a web server context.
   appropriately handling http requests sent to the same route with 
   different methods (GET or POST).
 
-* [ ] [`prefix.go`](prefix.go) - extends the previous example to
+* [x] [`prefix.go`](prefix.go) - extends the previous example to
   demonstrate [prefix scanning](https://godoc.org/github.com/joyrexus/buckets#PrefixScanner).
 
-* [ ] [`range.go`](range.go) - extends the previous example to
-  demonstrate [range scanning](https://godoc.org/github.com/joyrexus/buckets#RangeScanner).
+* [ ] `range.go` - extends the previous example to demonstrate [range scanning](https://godoc.org/github.com/joyrexus/buckets#RangeScanner).
