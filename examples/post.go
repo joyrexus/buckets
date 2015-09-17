@@ -31,7 +31,7 @@ func main() {
 	defer srv.Close()
 
 	// Daily todos to post.
-	posts := map[string]*Todo {
+	posts := map[string]*Todo{
 		"/mon": &Todo{Day: "mon", Task: "milk cows"},
 		"/tue": &Todo{Day: "tue", Task: "fold laundry"},
 		"/wed": &Todo{Day: "wed", Task: "flip burgers"},
@@ -78,7 +78,7 @@ func main() {
 	// /tue: fold laundry
 	// /wed: flip burgers
 
-	// Test that each encoded todo sent to the server was 
+	// Test that each encoded todo sent to the server was
 	// in fact stored in the todos bucket.
 	for route, want := range posts {
 		// Get encoded todo sent to route.
@@ -98,8 +98,6 @@ func main() {
 		}
 	}
 }
-
-
 
 type Todo struct {
 	Task string

@@ -11,9 +11,10 @@ import (
 	"os"
 
 	"github.com/joyrexus/buckets"
+	mux "github.com/julienschmidt/httprouter"
 )
 
-const verbose = true
+const verbose = false // if `true` you'll see log output
 
 func main() {
 	// Open the database.
@@ -21,69 +22,95 @@ func main() {
 	defer os.Remove(bx.Path())
 	defer bx.Close()
 
-	// Create a todos bucket.
-	todos, _ := bx.New([]byte("todos"))
+	// Create a bucket for storing todos.
+	bucket, _ := bx.New([]byte("todos"))
+
+	// Create our service for handling routes.
+	service := NewService(bucket)
+
+	// Create and setup our router.
+	router := mux.New()
+	router.GET("/:day", service.get)
+	router.POST("/:day", service.post)
 
 	// Start our web server.
-	handler := service{todos}
-	srv := httptest.NewServer(handler)
+	srv := httptest.NewServer(router)
 	defer srv.Close()
 
-	// Daily todos to post.
-	posts := map[string]Todo {
-		"/mon": Todo{Day: "mon", Task: "milk cows"},
-		"/tue": Todo{Day: "tue", Task: "fold laundry"},
-		"/wed": Todo{Day: "wed", Task: "flip burgers"},
-		"/thu": Todo{Day: "thu", Task: "join army"},
-		"/fri": Todo{Day: "fri", Task: "kill time"},
-		"/sat": Todo{Day: "sat", Task: "make merry"},
-		"/sun": Todo{Day: "sun", Task: "pray quietly"},
+	// Daily todos for client to post.
+	posts := map[string]*Todo{
+		"/mon": &Todo{Day: "mon", Task: "milk cows"},
+		"/tue": &Todo{Day: "tue", Task: "fold laundry"},
+		"/wed": &Todo{Day: "wed", Task: "flip burgers"},
+		"/thu": &Todo{Day: "thu", Task: "join army"},
+		"/fri": &Todo{Day: "fri", Task: "kill time"},
+		"/sat": &Todo{Day: "sat", Task: "make merry"},
+		"/sun": &Todo{Day: "sun", Task: "pray quietly"},
 	}
+
+	// Create our client.
+	client := new(Client)
 
 	for path, todo := range posts {
 		url := srv.URL + path
-		bodyType := "application/json"
-		body, err := encode(todo)
-		if err != nil {
-			log.Print(err)
-		}
-		resp, err := http.Post(url, bodyType, body)
-		if err != nil {
-			log.Print(err)
-		}
-		if verbose {
-			log.Printf("client: %s\n", resp.Status)
+		if err := client.post(url, todo); err != nil {
+			fmt.Printf("client post error: %v", err)
 		}
 	}
 
-	/*
-		if err := client.Post(srv.URL, posts); err != nil {
-			fmt.Printf("client post error: %v", err)
+	for path, _ := range posts {
+		url := srv.URL + path
+		task, err := client.get(url)
+		if err != nil {
+			fmt.Printf("client get error: %v", err)
 		}
-	*/
+		fmt.Printf("%s: %s\n", path, task)
+	}
 
 	// Output:
-	// /fri: kill time
 	// /mon: milk cows
-	// /sat: make merry
-	// /sun: pray quietly
-	// /thu: join army
 	// /tue: fold laundry
 	// /wed: flip burgers
+	// /thu: join army
+	// /fri: kill time
+	// /sat: make merry
+	// /sun: pray quietly
 }
+
+/* -- MODELS --*/
 
 type Todo struct {
 	Task string
 	Day  string
 }
 
-// This service handles post requests, storing them in a todos bucket.
-// The URLs are used as bucket keys and the json payload as values.
+/* -- SERVICE / CONTROLLER / HTTPROUTER HANDLES -- */
+
+// NewService initializes a new instance of our service.
+func NewService(bk *buckets.Bucket) *Service {
+	return &Service{bk}
+}
+
+// This service handles requests for todo items.  The items are stored
+// in a todos bucket.  The request URLs are used as bucket keys and the
+// raw json payload as values.
 type Service struct {
 	todos *buckets.Bucket
 }
 
-func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// get handles get requests for a todo item.
+func (s *Service) get(w http.ResponseWriter, r *http.Request, _ mux.Params) {
+	key := []byte(r.URL.String())
+	value, err := s.todos.Get(key)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(value)
+}
+
+// get handles post requests to create a todo item.
+func (s *Service) post(w http.ResponseWriter, r *http.Request, _ mux.Params) {
 	key := []byte(r.URL.String())
 
 	// Read request body's json payload into buffer.
@@ -100,17 +127,20 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if verbose {
-		log.Printf("server: %s: %v", key, todo)
+		log.Printf("server: %s: %v", key, todo.Task)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, "put todo for %s: %s\n", key, todo)
 }
 
+/* -- CLIENT --*/
+
+// Our http client for sending requests.
 type Client struct{}
 
-/*
-func (c *Client) Post(url, todo) error {
+// post sends a post request with a json payload.
+func (c *Client) post(url string, todo *Todo) error {
 	bodyType := "application/json"
 	body, err := encode(todo)
 	if err != nil {
@@ -123,35 +153,28 @@ func (c *Client) Post(url, todo) error {
 	if verbose {
 		log.Printf("client: %s\n", resp.Status)
 	}
-}
-
-func (c *Client) Get(url) error {
-	for path, _ := range posts {
-		resp, err := http.Get(base + path)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		todo, err := decode(b)
-		if err != nil {
-			return err
-		}
-		if verbose {
-			log.Printf("client: %s: %s", path, buf)
-		}
-		fmt.Printf("%s: %s\n", path, todo.Task)
-	}
 	return nil
 }
-*/
+
+// get sends get requests and expects responses to be a json-encoded todo item.
+func (c *Client) get(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	todo := new(Todo)
+	if err = json.NewDecoder(resp.Body).Decode(todo); err != nil {
+		return "", err
+	}
+	return todo.Task, nil
+}
+
+/* -- CODEC -- */
 
 // encode marshals a Todo into a buffer.
-func encode(todo Todo) (*bytes.Buffer, error) {
+func encode(todo *Todo) (*bytes.Buffer, error) {
 	b, err := json.Marshal(todo)
 	if err != nil {
 		return &bytes.Buffer{}, err
@@ -167,6 +190,8 @@ func decode(b []byte) (*Todo, error) {
 	}
 	return todo, nil
 }
+
+/* -- UTILITY FUNCTIONS -- */
 
 // tempFilePath returns a temporary file path.
 func tempFilePath() string {
