@@ -136,7 +136,7 @@ func (s *Service) post(w http.ResponseWriter, r *http.Request, _ mux.Params) {
 		log.Printf("server: %s: %v", key, todo.Task)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, "put todo for %s: %s\n", key, todo)
 }
 

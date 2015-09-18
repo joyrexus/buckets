@@ -148,7 +148,7 @@ func (s service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("server: %s: %v", key, todo)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, "put todo for %s: %s\n", key, todo)
 }
 

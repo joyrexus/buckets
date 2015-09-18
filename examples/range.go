@@ -32,8 +32,9 @@ func main() {
 
 	// Create and setup our router.
 	router := httprouter.New()
-	router.GET("/:day", control.get)
-	router.POST("/:day", control.post)
+	router.POST("/day/:day", control.post)
+	router.GET("/day/:day", control.getDayTasks)
+	router.GET("/weekend", control.getWeekendTasks)
 
 	// Start our web server.
 	srv := httptest.NewServer(router)
@@ -61,7 +62,7 @@ func main() {
 
 	// Have our client post each daily todo.
 	for _, todo := range posts {
-		url := srv.URL + "/" + todo.Day
+		url := srv.URL + "/day/" + todo.Day
 		if err := client.post(url, todo); err != nil {
 			fmt.Printf("client post error: %v", err)
 		}
@@ -70,14 +71,13 @@ func main() {
 	// Have our client get a list of tasks for each day.
 	week := []string{"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
 	for _, day := range week {
-		url := srv.URL + "/" + day
+		url := srv.URL + "/day/" + day
 		tasks, err := client.get(url)
 		if err != nil {
 			fmt.Printf("client get error: %v", err)
 		}
 		fmt.Printf("%s: %s\n", day, tasks)
 	}
-
 	// Output:
 	// mon: milk cows, feed cows, wash cows
 	// tue: wash laundry, fold laundry, iron laundry
@@ -86,6 +86,15 @@ func main() {
 	// fri: kill time
 	// sat: have beer, make merry
 	// sun: take aspirin, pray quietly
+
+	// Have our client get a list of combined tasks for the weekend.
+	tasks, err := client.get(srv.URL + "/weekend")
+	if err != nil {
+		fmt.Printf("client get error: %v", err)
+	}
+	fmt.Printf("\nweekend: %s\n", tasks)
+	// Output:
+	// weekend: have beer, make merry, take aspirin, pray quietly
 }
 
 /* -- MODELS --*/
@@ -108,16 +117,18 @@ type TaskList struct {
 // NewController initializes a new instance of our controller.
 // It provides handler methods for our router.
 func NewController(bk *buckets.Bucket) *Controller {
-	prefix := map[string]*buckets.PrefixScanner{
-		"/mon": bk.NewPrefixScanner([]byte("/mon")),
-		"/tue": bk.NewPrefixScanner([]byte("/tue")),
-		"/wed": bk.NewPrefixScanner([]byte("/wed")),
-		"/thu": bk.NewPrefixScanner([]byte("/thu")),
-		"/fri": bk.NewPrefixScanner([]byte("/fri")),
-		"/sat": bk.NewPrefixScanner([]byte("/sat")),
-		"/sun": bk.NewPrefixScanner([]byte("/sun")),
+	prefix := map[int]*buckets.PrefixScanner{
+		1: bk.NewPrefixScanner([]byte("1")),
+		2: bk.NewPrefixScanner([]byte("2")),
+		3: bk.NewPrefixScanner([]byte("3")),
+		4: bk.NewPrefixScanner([]byte("4")),
+		5: bk.NewPrefixScanner([]byte("5")),
+		6: bk.NewPrefixScanner([]byte("6")),
+		7: bk.NewPrefixScanner([]byte("7")),
 	}
-	return &Controller{bk, prefix}
+	weekday := bk.NewRangeScanner([]byte("1"), []byte("6"))
+	weekend := bk.NewRangeScanner([]byte("6"), []byte("8"))
+	return &Controller{bk, prefix, weekday, weekend}
 }
 
 // This Controller handles requests for todo items.  The items are stored
@@ -128,17 +139,44 @@ func NewController(bk *buckets.Bucket) *Controller {
 // imported) as our router, each method is a `httprouter.Handle` rather
 // than a `http.HandlerFunc`.
 type Controller struct {
-	todos  *buckets.Bucket
-	prefix map[string]*buckets.PrefixScanner
+	todos   *buckets.Bucket
+	prefix  map[int]*buckets.PrefixScanner
+	weekday *buckets.RangeScanner
+	weekend *buckets.RangeScanner
 }
 
-// get handles get requests for a particular day, returning the day's
-// task list.
-func (c *Controller) get(w http.ResponseWriter, r *http.Request,
+// getWeekendTasks handles get requests for `/weekend`, returning the
+// combined task list for saturday and sunday.
+func (c *Controller) getWeekendTasks(w http.ResponseWriter, r *http.Request,
+	_ httprouter.Params) {
+
+	items, err := c.weekend.Items()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+	}
+
+	taskList := &TaskList{"weekend", []string{}}
+
+	for _, item := range items {
+		todo, err := decode(item.Value)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+		}
+		taskList.Tasks = append(taskList.Tasks, todo.Task)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(taskList)
+}
+
+// getDayTasks handles get requests for `/:day`, returning a particular
+// day's task list.
+func (c *Controller) getDayTasks(w http.ResponseWriter, r *http.Request,
 	_ httprouter.Params) {
 
 	day := r.URL.String()
-	items, err := c.prefix[day].Items()
+	num := dayNumMap[day] // number of day of week
+	items, err := c.prefix[num].Items()
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 	}
@@ -158,7 +196,7 @@ func (c *Controller) get(w http.ResponseWriter, r *http.Request,
 }
 
 // post handles post requests to create a daily todo item.
-func (c *Controller) post(w http.ResponseWriter, r *http.Request, 
+func (c *Controller) post(w http.ResponseWriter, r *http.Request,
 	_ httprouter.Params) {
 
 	// Read request body's json payload into buffer.
@@ -168,15 +206,16 @@ func (c *Controller) post(w http.ResponseWriter, r *http.Request,
 		http.Error(w, err.Error(), 500)
 	}
 
-	// Use the day (url path) + creation time as key.
-	key := fmt.Sprintf("%s/%s", r.URL, todo.Created.Format(time.RFC3339Nano))
+	// Use the day number + creation time as key.
+	daynum := dayNumMap[r.URL.String()]
+	created := todo.Created.Format(time.RFC3339Nano)
+	key := fmt.Sprintf("%d/%s", daynum, created)
 
 	// Put key/buffer into todos bucket.
 	if err := c.todos.Put([]byte(key), b); err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-
 	if verbose {
 		log.Printf("server: %s: %v", key, todo.Task)
 	}
@@ -244,7 +283,7 @@ func decode(b []byte) (*Todo, error) {
 	return todo, nil
 }
 
-/* -- UTILITY FUNCTIONS -- */
+/* -- UTILITY FUNCTIONS, &c. -- */
 
 // tempFilePath returns a temporary file path.
 func tempFilePath() string {
@@ -256,4 +295,14 @@ func tempFilePath() string {
 		log.Fatal(err)
 	}
 	return f.Name()
+}
+
+var dayNumMap = map[string]int{
+	"/day/mon": 1,
+	"/day/tue": 2,
+	"/day/wed": 3,
+	"/day/thu": 4,
+	"/day/fri": 5,
+	"/day/sat": 6,
+	"/day/sun": 7,
 }
