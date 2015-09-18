@@ -105,6 +105,15 @@ type Todo struct {
 	Created time.Time // when created
 }
 
+// Encode marshals a Todo into a buffer.
+func (todo *Todo) Encode() (*bytes.Buffer, error) {
+	b, err := json.Marshal(todo)
+	if err != nil {
+		return &bytes.Buffer{}, err
+	}
+	return bytes.NewBuffer(b), nil
+}
+
 // A TaskList is a list of tasks for a particular day.
 type TaskList struct {
 	Day   string
@@ -202,13 +211,13 @@ type Client struct{}
 func (c *Client) post(url string, todo *Todo) error {
 	todo.Created = time.Now()
 	bodyType := "application/json"
-	body, err := encode(todo)
+	body, err := todo.Encode()
 	if err != nil {
 		return err
 	}
 	resp, err := http.Post(url, bodyType, body)
 	if err != nil {
-		log.Print(err)
+		return err
 	}
 	if verbose {
 		log.Printf("client: %s\n", resp.Status)
@@ -232,16 +241,7 @@ func (c *Client) get(url string) (string, error) {
 	return strings.Join(taskList.Tasks, ", "), nil
 }
 
-/* -- CODEC -- */
-
-// encode marshals a Todo into a buffer.
-func encode(todo *Todo) (*bytes.Buffer, error) {
-	b, err := json.Marshal(todo)
-	if err != nil {
-		return &bytes.Buffer{}, err
-	}
-	return bytes.NewBuffer(b), nil
-}
+/* -- UTILITY FUNCTIONS -- */
 
 // decode unmarshals a json-encoded byteslice into a Todo.
 func decode(b []byte) (*Todo, error) {
@@ -251,8 +251,6 @@ func decode(b []byte) (*Todo, error) {
 	}
 	return todo, nil
 }
-
-/* -- UTILITY FUNCTIONS -- */
 
 // tempFilePath returns a temporary file path.
 func tempFilePath() string {

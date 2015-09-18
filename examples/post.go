@@ -14,16 +14,24 @@ import (
 	"github.com/joyrexus/buckets"
 )
 
-const verbose = true
+const verbose = false // if `true` you'll see log output
 
 func main() {
-	// Open the buckets database.
-	bx, _ := buckets.Open(tempFilePath())
+	// Open a buckets database.
+	bx, err := buckets.Open(tempFilePath())
+	if err != nil {
+		log.Fatalf("couldn't open db: %v", err)
+	}
+
+	// Delete and close the db when done.
 	defer os.Remove(bx.Path())
 	defer bx.Close()
 
-	// Create a todos bucket.
-	todos, _ := bx.New([]byte("todos"))
+	// Create a bucket for storing todos.
+	todos, err := bx.New([]byte("todos"))
+	if err != nil {
+		log.Fatalf("couldn't create todos bucket: %v", err)
+	}
 
 	// Start our web server.
 	handler := service{todos}
@@ -45,7 +53,7 @@ func main() {
 	for path, todo := range posts {
 		url := srv.URL + path
 		bodyType := "application/json"
-		body, err := encode(todo)
+		body, err := todo.Encode()
 		if err != nil {
 			log.Print(err)
 		}
@@ -55,6 +63,26 @@ func main() {
 		}
 		if verbose {
 			log.Printf("client: %s\n", resp.Status)
+		}
+	}
+
+	// Test that each encoded todo sent to the server was
+	// in fact stored in the todos bucket.
+	for route, want := range posts {
+		// Get encoded todo sent to route.
+		encoded, err := todos.Get([]byte(route))
+		if err != nil {
+			log.Fatalf("todo bucket is missing entry for %s: %v", route, err)
+		}
+		got, err := decode(encoded)
+		if err != nil {
+			log.Fatalf("could not decode entry for %s: %v", route, err)
+		}
+		if got.Task != want.Task {
+			log.Fatalf("%s: got %v, want %v", route, got.Task, want.Task)
+		}
+		if !reflect.DeepEqual(got, want) {
+			log.Fatalf("%s: got %v, want %v", route, got, want)
 		}
 	}
 
@@ -77,26 +105,6 @@ func main() {
 	// /thu: join army
 	// /tue: fold laundry
 	// /wed: flip burgers
-
-	// Test that each encoded todo sent to the server was
-	// in fact stored in the todos bucket.
-	for route, want := range posts {
-		// Get encoded todo sent to route.
-		encoded, err := todos.Get([]byte(route))
-		if err != nil {
-			log.Fatalf("todo bucket is missing entry for %s: %v", route, err)
-		}
-		got, err := decode(encoded)
-		if err != nil {
-			log.Fatalf("could not decode entry for %s: %v", route, err)
-		}
-		if got.Task != want.Task {
-			log.Fatalf("%s: got %v, want %v", route, got.Task, want.Task)
-		}
-		if !reflect.DeepEqual(got, want) {
-			log.Fatalf("%s: got %v, want %v", route, got, want)
-		}
-	}
 }
 
 type Todo struct {
@@ -104,22 +112,13 @@ type Todo struct {
 	Day  string
 }
 
-// encode marshals a Todo into a buffer.
-func encode(todo *Todo) (*bytes.Buffer, error) {
+// Encode marshals a Todo into a buffer.
+func (todo *Todo) Encode() (*bytes.Buffer, error) {
 	b, err := json.Marshal(todo)
 	if err != nil {
 		return &bytes.Buffer{}, err
 	}
 	return bytes.NewBuffer(b), nil
-}
-
-// decode unmarshals a json-encoded byteslice into a Todo.
-func decode(b []byte) (*Todo, error) {
-	todo := new(Todo)
-	if err := json.Unmarshal(b, todo); err != nil {
-		return &Todo{}, err
-	}
-	return todo, nil
 }
 
 // This service handles post requests, storing them in a todos bucket.
@@ -150,6 +149,17 @@ func (s service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, "put todo for %s: %s\n", key, todo)
+}
+
+/* -- UTILITY FUNCTIONS -- */
+
+// decode unmarshals a json-encoded byteslice into a Todo.
+func decode(b []byte) (*Todo, error) {
+	todo := new(Todo)
+	if err := json.Unmarshal(b, todo); err != nil {
+		return todo, err
+	}
+	return todo, nil
 }
 
 // tempFilePath returns a temporary file path.

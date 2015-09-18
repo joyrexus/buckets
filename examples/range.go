@@ -129,9 +129,18 @@ type Todo struct {
 	Created time.Time // when created
 }
 
+// Encode marshals a Todo into a buffer.
+func (todo *Todo) Encode() (*bytes.Buffer, error) {
+	b, err := json.Marshal(todo)
+	if err != nil {
+		return &bytes.Buffer{}, err
+	}
+	return bytes.NewBuffer(b), nil
+}
+
 // A TaskList is a list of tasks for a particular day.
 type TaskList struct {
-	Day   string
+	When  string
 	Tasks []string
 }
 
@@ -140,6 +149,17 @@ type TaskList struct {
 // NewController initializes a new instance of our controller.
 // It provides handler methods for our router.
 func NewController(bk *buckets.Bucket) *Controller {
+	// map of days to integers
+	daynum := map[string]int{
+		"mon": 1, // monday is the first day of the week
+		"tue": 2,
+		"wed": 3,
+		"thu": 4,
+		"fri": 5,
+		"sat": 6,
+		"sun": 7,
+	}
+	// map of prefix scanners for iterating over keys with prefixes
 	prefixscan := map[string]*buckets.PrefixScanner{
 		"mon": bk.NewPrefixScanner([]byte("1")),
 		"tue": bk.NewPrefixScanner([]byte("2")),
@@ -149,11 +169,14 @@ func NewController(bk *buckets.Bucket) *Controller {
 		"sat": bk.NewPrefixScanner([]byte("6")),
 		"sun": bk.NewPrefixScanner([]byte("7")),
 	}
+	// map of range scanners for iterating over keys within ranges
 	rangescan := map[string]*buckets.RangeScanner{
+		// weekdays are mon to fri: 1 <= key < 6.
 		"weekday": bk.NewRangeScanner([]byte("1"), []byte("6")),
+		// weekends are sat to sun: 6 <= key < 8.
 		"weekend": bk.NewRangeScanner([]byte("6"), []byte("8")),
 	}
-	return &Controller{bk, prefixscan, rangescan}
+	return &Controller{bk, daynum, prefixscan, rangescan}
 }
 
 // This Controller handles requests for todo items.  The items are stored
@@ -165,23 +188,27 @@ func NewController(bk *buckets.Bucket) *Controller {
 // than a `http.HandlerFunc`.
 type Controller struct {
 	todos      *buckets.Bucket
+	daynum     map[string]int
 	prefixscan map[string]*buckets.PrefixScanner
 	rangescan  map[string]*buckets.RangeScanner
 }
 
 // getWeekendTasks handles get requests for `/weekend`, returning the
-// combined task list for saturday and sunday. We utilize the range scanner
-// we set up for scanning keys in our todos bucket, viz. for keys representing
-// tasks for saturday (day number 6) and sunday (7). In other words, our
-// range scanner iterates over keys within range 6 <= key <= 8.
+// combined task list for saturday and sunday.
+//
+// Note how we utilize the `weekend` range scanner, which makes it easy
+// to iterate over keys in our todos bucket within a certain range, 
+// viz. those keys from saturday (day number 6) to sunday (7).
 func (c *Controller) getWeekendTasks(w http.ResponseWriter, r *http.Request,
 	_ httprouter.Params) {
 
+	// Get todo items within the weekend range.
 	items, err := c.rangescan["weekend"].Items()
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 
+	// Generate a list of tasks based on todo items retrieved.
 	taskList := &TaskList{"weekend", []string{}}
 
 	for _, item := range items {
@@ -197,18 +224,21 @@ func (c *Controller) getWeekendTasks(w http.ResponseWriter, r *http.Request,
 }
 
 // getWeekdayTasks handles get requests for `/weekdays`, returning the
-// combined task list for monday through friday. We utilize the range scanner
-// we set up for scanning keys in our todos bucket, viz. for keys within
-// the monday (day number 1) to friday (5) range.  In other words, our
-// range scanner iterates over keys within range 1 <= key <= 6.
+// combined task list for monday through friday. 
+//
+// Note how we utilize the `weekday` range scanner, which makes it easy
+// to iterate over keys in our todos bucket within a certain range, 
+// viz. those keys from monday (day number 1) to friday (5).
 func (c *Controller) getWeekdayTasks(w http.ResponseWriter, r *http.Request,
 	_ httprouter.Params) {
 
+	// Get todo items within the weekday range.
 	items, err := c.rangescan["weekday"].Items()
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 
+	// Generate a list of tasks based on todo items retrieved.
 	taskList := &TaskList{"weekdays", []string{}}
 
 	for _, item := range items {
@@ -225,15 +255,22 @@ func (c *Controller) getWeekdayTasks(w http.ResponseWriter, r *http.Request,
 
 // getDayTasks handles get requests for `/:day`, returning a particular
 // day's task list.
+//
+// Note how we utilize the prefix scanner for the day requested (as indicated
+// in the route's `day` parameter). This makes it easy to iterate over keys 
+// in our todos bucket with a certain prefix, viz. those with the prefix
+// representing the requested day.
 func (c *Controller) getDayTasks(w http.ResponseWriter, r *http.Request,
 	p httprouter.Params) {
 
+	// Get todo items for the day requested.
 	day := p.ByName("day")
 	items, err := c.prefixscan[day].Items()
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 
+	// Generate a list of tasks based on todo items retrieved.
 	taskList := &TaskList{day, []string{}}
 
 	for _, item := range items {
@@ -249,6 +286,8 @@ func (c *Controller) getDayTasks(w http.ResponseWriter, r *http.Request,
 }
 
 // post handles post requests to create a daily todo item.
+//
+//
 func (c *Controller) post(w http.ResponseWriter, r *http.Request,
 	p httprouter.Params) {
 
@@ -261,7 +300,7 @@ func (c *Controller) post(w http.ResponseWriter, r *http.Request,
 
 	// Use the day number + creation time as key.
 	day := p.ByName("day")
-	num := dayNumMap[day] // number of day of week
+	num := c.daynum[day] // number of day of week
 	created := todo.Created.Format(time.RFC3339Nano)
 	key := fmt.Sprintf("%d/%s", num, created)
 
@@ -287,13 +326,13 @@ type Client struct{}
 func (c *Client) post(url string, todo *Todo) error {
 	todo.Created = time.Now()
 	bodyType := "application/json"
-	body, err := encode(todo)
+	body, err := todo.Encode()
 	if err != nil {
 		return err
 	}
 	resp, err := http.Post(url, bodyType, body)
 	if err != nil {
-		log.Print(err)
+		return err
 	}
 	if verbose {
 		log.Printf("client: %s\n", resp.Status)
@@ -317,16 +356,7 @@ func (c *Client) get(url string) (string, error) {
 	return strings.Join(taskList.Tasks, ", "), nil
 }
 
-/* -- CODEC -- */
-
-// encode marshals a Todo into a buffer.
-func encode(todo *Todo) (*bytes.Buffer, error) {
-	b, err := json.Marshal(todo)
-	if err != nil {
-		return &bytes.Buffer{}, err
-	}
-	return bytes.NewBuffer(b), nil
-}
+/* -- UTILITY FUNCTIONS, &c. -- */
 
 // decode unmarshals a json-encoded byteslice into a Todo.
 func decode(b []byte) (*Todo, error) {
@@ -336,8 +366,6 @@ func decode(b []byte) (*Todo, error) {
 	}
 	return todo, nil
 }
-
-/* -- UTILITY FUNCTIONS, &c. -- */
 
 // tempFilePath returns a temporary file path.
 func tempFilePath() string {
@@ -349,14 +377,4 @@ func tempFilePath() string {
 		log.Fatal(err)
 	}
 	return f.Name()
-}
-
-var dayNumMap = map[string]int{
-	"mon": 1,
-	"tue": 2,
-	"wed": 3,
-	"thu": 4,
-	"fri": 5,
-	"sat": 6,
-	"sun": 7,
 }
