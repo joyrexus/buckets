@@ -19,13 +19,21 @@ import (
 const verbose = false // if `true` you'll see log output
 
 func main() {
-	// Open the database.
-	bx, _ := buckets.Open(tempFilePath())
+	// Open a buckets database.
+	bx, err := buckets.Open(tempFilePath())
+	if err != nil {
+		log.Fatalf("couldn't open db: %v", err)
+	}
+
+	// Delete and close the db when done.
 	defer os.Remove(bx.Path())
 	defer bx.Close()
 
 	// Create a bucket for storing todos.
-	bucket, _ := bx.New([]byte("todos"))
+	bucket, err := bx.New([]byte("todos"))
+	if err != nil {
+		log.Fatalf("couldn't create todos bucket: %v", err)
+	}
 
 	// Initialize our controller for handling specific routes.
 	control := NewController(bucket)
@@ -158,7 +166,7 @@ func (c *Controller) get(w http.ResponseWriter, r *http.Request,
 }
 
 // post handles post requests to create a daily todo item.
-func (c *Controller) post(w http.ResponseWriter, r *http.Request, 
+func (c *Controller) post(w http.ResponseWriter, r *http.Request,
 	_ httprouter.Params) {
 
 	// Read request body's json payload into buffer.
