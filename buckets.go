@@ -107,6 +107,21 @@ func (bk *Bucket) Items() (items []Item, err error) {
 	})
 }
 
+/*
+// PrefixItems returns a slice of key/value pairs for all keys with 
+// a given prefix.  Each k/v pair in the slice is of type Item 
+// (`struct{ Key, Value []byte }`).
+func (bk *Bucket) PrefixItems() (items []Item, err error) {
+	return items, bk.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(bk.Name).Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			items = append(items, Item{k, v})
+		}
+		return nil
+	})
+}
+*/
+
 // Map applies `do` on each key/value pair.
 func (bk *Bucket) Map(do func(k, v []byte) error) error {
 	return bk.db.View(func(tx *bolt.Tx) error {
