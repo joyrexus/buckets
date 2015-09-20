@@ -16,13 +16,3 @@ type Scanner interface {
 	// ItemMapping returns a mapping of k/v pairs from scanned keys.
 	ItemMapping() (map[string][]byte, error)
 }
-
-// An Item holds a key/value pair.
-//
-// For types satisfying the Scanner interface, slices of Items are returned by
-// their Items() method.
-type Item struct {
-	Key   []byte
-	Value []byte
-}
-

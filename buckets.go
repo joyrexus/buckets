@@ -47,7 +47,15 @@ func (db *DB) Delete(name []byte) error {
 	})
 }
 
-/* --- BUCKET--- */
+/* -- ITEM -- */
+
+// An Item holds a key/value pair.
+type Item struct {
+	Key   []byte
+	Value []byte
+}
+
+/* -- BUCKET-- */
 
 // Bucket represents a collection of key/value pairs inside the database.
 type Bucket struct {
@@ -175,7 +183,7 @@ func (bk *Bucket) NewRangeScanner(min, max []byte) *RangeScanner {
 	return &RangeScanner{bk.db, bk.Name, min, max}
 }
 
-/* --- PREFIX SCANNER --- */
+/* -- PREFIX SCANNER -- */
 
 // A PrefixScanner scans a bucket for keys with a given prefix.
 type PrefixScanner struct {
@@ -278,7 +286,7 @@ func (ps *PrefixScanner) ItemMapping() (map[string][]byte, error) {
 	return items, err
 }
 
-/* --- RANGE SCANNER --- */
+/* -- RANGE SCANNER -- */
 
 // A RangeScanner scans a bucket for keys within a given range.
 type RangeScanner struct {
@@ -378,7 +386,7 @@ func (rs *RangeScanner) ItemMapping() (map[string][]byte, error) {
 	return items, err
 }
 
-/* --- UTILITY FUNCTIONS --- */
+/* -- UTILITY FUNCTIONS -- */
 
 // isBefore checks whether `key` comes before `max`.
 func isBefore(key, max []byte) bool {
