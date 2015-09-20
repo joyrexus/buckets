@@ -10,7 +10,8 @@ for persistence in a web server context.
   appropriately handling http requests sent to the same route with 
   different methods (GET or POST).
 
-* [`prefix.go`](prefix.go) - extends the previous example to
-  demonstrate [prefix scanning](https://godoc.org/github.com/joyrexus/buckets#PrefixScanner).
+* [`prefix.go`](prefix.go) - extends the previous example to demonstrate [prefix scanning](https://godoc.org/github.com/joyrexus/buckets#PrefixScanner).
 
 * [`range.go`](range.go) - extends the previous example to demonstrate [range scanning](https://godoc.org/github.com/joyrexus/buckets#RangeScanner).
+
+* [`items.go`](range.go) - variant of the previous example demonstrating an alternative way to get items having keys with a certain prefix or within a certain range: viz., using the [`Bucket.PrefixItems`](https://godoc.org/github.com/joyrexus/buckets#PrefixItems) and [`Bucket.RangeItems`](https://godoc.org/github.com/joyrexus/buckets#RangeItems).  
