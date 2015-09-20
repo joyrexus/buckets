@@ -36,7 +36,7 @@ func ExampleBucket_Put() {
 	// Put key/value into the `things` bucket.
 	key, value := []byte("A"), []byte("alpha")
 	if err := things.Put(key, value); err != nil {
-		fmt.Println("could not insert items!")
+		fmt.Printf("could not insert item: %v", err)
 	}
 
 	// Read value back in a different read-only transaction.
@@ -151,4 +151,212 @@ func ExampleBucket_Insert() {
 	// A -> alpha
 	// B -> beta
 	// C -> gamma
+}
+
+// Ensure that we can get items for all keys with a given prefix.
+func TestPrefixItems(t *testing.T) {
+	// Delete any existing bucket named "things".
+	bx.Delete([]byte("things"))
+
+	// Create a new things bucket.
+	things, err := bx.New([]byte("things"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// Setup items to insert.
+	items := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("A"), []byte("1")},   // `A` prefix match
+		{[]byte("AA"), []byte("2")},  // match
+		{[]byte("AAA"), []byte("3")}, // match
+		{[]byte("AAB"), []byte("2")}, // match
+		{[]byte("B"), []byte("O")},
+		{[]byte("BA"), []byte("0")},
+		{[]byte("BAA"), []byte("0")},
+	}
+
+	// Insert 'em.
+	if err := things.Insert(items); err != nil {
+		t.Error(err.Error())
+	}
+
+	// Now get each item whose key starts with "A".
+	prefix := []byte("A")
+
+	// Expected items for keys with prefix "A".
+	expected := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("A"), []byte("1")},
+		{[]byte("AA"), []byte("2")},
+		{[]byte("AAA"), []byte("3")},
+		{[]byte("AAB"), []byte("2")},
+	}
+
+	results, err := things.PrefixItems(prefix)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	for i, want := range expected {
+		got := results[i]
+		if !bytes.Equal(got.Key, want.Key) {
+			t.Errorf("got %v, want %v", got.Key, want.Key)
+		}
+		if !bytes.Equal(got.Value, want.Value) {
+			t.Errorf("got %v, want %v", got.Value, want.Value)
+		}
+	}
+}
+
+// Show that we can get items for all keys with a given prefix.
+func ExampleBucket_PrefixItems() {
+	// Delete any existing bucket named "things".
+	bx.Delete([]byte("things"))
+
+	// Create a new things bucket.
+	things, _ := bx.New([]byte("things"))
+
+	// Setup items to insert.
+	items := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("A"), []byte("1")},   // `A` prefix match
+		{[]byte("AA"), []byte("2")},  // match
+		{[]byte("AAA"), []byte("3")}, // match
+		{[]byte("AAB"), []byte("2")}, // match
+		{[]byte("B"), []byte("O")},
+		{[]byte("BA"), []byte("0")},
+		{[]byte("BAA"), []byte("0")},
+	}
+
+	// Insert 'em.
+	if err := things.Insert(items); err != nil {
+		fmt.Printf("could not insert items in `things` bucket: %v\n", err)
+	}
+
+	// Now get items whose key starts with "A".
+	prefix := []byte("A")
+
+	results, err := things.PrefixItems(prefix)
+	if err != nil {
+		fmt.Printf("could not get items with prefix %q: %v\n", prefix, err)
+	}
+
+	for _, item := range results {
+		fmt.Printf("%s -> %s\n", item.Key, item.Value)
+	}
+	// Output:
+	// A -> 1
+	// AA -> 2
+	// AAA -> 3
+	// AAB -> 2
+}
+
+// Ensure we can get items for all keys within a given range.
+func TestRangeItems(t *testing.T) {
+	// Delete any existing bucket named "years".
+	bx.Delete([]byte("years"))
+
+	years, err := bx.New([]byte("years"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// Setup items to insert in `years` bucket
+	items := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("1970"), []byte("70")},
+		{[]byte("1975"), []byte("75")},
+		{[]byte("1980"), []byte("80")},
+		{[]byte("1985"), []byte("85")},
+		{[]byte("1990"), []byte("90")}, // min = 1990
+		{[]byte("1995"), []byte("95")}, // min < 1995 < max
+		{[]byte("2000"), []byte("00")}, // max = 2000
+		{[]byte("2005"), []byte("05")},
+		{[]byte("2010"), []byte("10")},
+	}
+
+	// Insert 'em.
+	if err := years.Insert(items); err != nil {
+		t.Error(err.Error())
+	}
+
+	// Now get each item whose key is in the 1990 to 2000 range.
+	min := []byte("1990")
+	max := []byte("2000")
+
+	// Expected items within time range: 1990 <= key <= 2000.
+	expected := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("1990"), []byte("90")}, // min = 1990
+		{[]byte("1995"), []byte("95")}, // min < 1995 < max
+		{[]byte("2000"), []byte("00")}, // max = 2000
+	}
+
+	// Get items for keys within min/max range.
+	results, err := years.RangeItems(min, max)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	for i, want := range expected {
+		got := results[i]
+		if !bytes.Equal(got.Key, want.Key) {
+			t.Errorf("got %v, want %v", got.Key, want.Key)
+		}
+		if !bytes.Equal(got.Value, want.Value) {
+			t.Errorf("got %v, want %v", got.Value, want.Value)
+		}
+	}
+}
+
+// Show that we get items for keys within a given range.
+func ExampleBucket_RangeItems() {
+	// Delete any existing bucket named "years".
+	bx.Delete([]byte("years"))
+
+	// Create a new bucket named "years".
+	years, _ := bx.New([]byte("years"))
+
+	// Setup items to insert in `years` bucket
+	items := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("1970"), []byte("70")},
+		{[]byte("1975"), []byte("75")},
+		{[]byte("1980"), []byte("80")},
+		{[]byte("1985"), []byte("85")},
+		{[]byte("1990"), []byte("90")}, // min = 1990
+		{[]byte("1995"), []byte("95")}, // min < 1995 < max
+		{[]byte("2000"), []byte("00")}, // max = 2000
+		{[]byte("2005"), []byte("05")},
+		{[]byte("2010"), []byte("10")},
+	}
+
+	// Insert 'em.
+	if err := years.Insert(items); err != nil {
+		fmt.Printf("could not insert items in `years` bucket: %v\n", err)
+	}
+
+	// Time range: 1990 <= key <= 2000.
+	min := []byte("1990")
+	max := []byte("2000")
+
+	results, err := years.RangeItems(min, max)
+	if err != nil {
+		fmt.Printf("could not get items within range: %v\n", err)
+	}
+
+	for _, item := range results {
+		fmt.Printf("%s -> %s\n", item.Key, item.Value)
+	}
+	// Output:
+	// 1990 -> 90
+	// 1995 -> 95
+	// 2000 -> 00
 }

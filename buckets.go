@@ -107,20 +107,33 @@ func (bk *Bucket) Items() (items []Item, err error) {
 	})
 }
 
-/*
 // PrefixItems returns a slice of key/value pairs for all keys with 
 // a given prefix.  Each k/v pair in the slice is of type Item 
 // (`struct{ Key, Value []byte }`).
-func (bk *Bucket) PrefixItems() (items []Item, err error) {
-	return items, bk.db.View(func(tx *bolt.Tx) error {
+func (bk *Bucket) PrefixItems(pre []byte) (items []Item, err error) {
+	err = bk.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(bk.Name).Cursor()
-		for k, v := c.First(); k != nil; k, v = c.Next() {
+		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
 			items = append(items, Item{k, v})
 		}
 		return nil
 	})
+	return items, err
 }
-*/
+
+// RangeItems returns a slice of key/value pairs for all keys within 
+// a given range.  Each k/v pair in the slice is of type Item 
+// (`struct{ Key, Value []byte }`).
+func (bk *Bucket) RangeItems(min []byte, max []byte) (items []Item, err error) {
+	err = bk.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(bk.Name).Cursor()
+		for k, v := c.Seek(min); isBefore(k, max); k, v = c.Next() {
+			items = append(items, Item{k, v})
+		}
+		return nil
+	})
+	return items, err
+}
 
 // Map applies `do` on each key/value pair.
 func (bk *Bucket) Map(do func(k, v []byte) error) error {
