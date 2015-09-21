@@ -95,4 +95,4 @@ Note that buckets obtains a file lock on the data file so multiple processes can
 
 The docs contain numerous [examples](https://godoc.org/github.com/joyrexus/buckets#pkg-examples) demonstrating basic usage.
 
-See also the [`examples`](examples) directory for standalone examples, demonstrating use of buckets for persistence in a web service context.
+See also the [examples](examples) directory for standalone examples, demonstrating use of buckets for persistence in a web service context.
