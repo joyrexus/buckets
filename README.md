@@ -39,7 +39,7 @@ Output:
 
 As noted above, buckets is a wrapper for Bolt, streamlining [basic transactions](https://github.com/boltdb/bolt#transactions).  If you're unfamiliar with Bolt, check out the [README](https://github.com/boltdb/bolt#resources) and [intro articles](https://github.com/boltdb/bolt#resources).
 
-A buckets/bolt database contains a set of buckets.  What's a bucket?  It's basically just an [associate array](https://en.wikipedia.org/wiki/Associative_array), mapping keys to values.  For simplicity, we say that a bucket *contains* key/values pairs and we refer to these k/v pairs as "items".  You use buckets for storing and retrieving such items.
+A buckets/bolt database contains a set of buckets.  What's a bucket?  It's basically just an [associative array](https://en.wikipedia.org/wiki/Associative_array), mapping keys to values.  For simplicity, we say that a bucket *contains* key/values pairs and we refer to these k/v pairs as "items".  You use buckets for storing and retrieving such items.
 
 Since Bolt stores keys in [byte-sorted order](https://github.com/boltdb/bolt#iterating-over-keys), we can take advantage of this sorted key namespace for fast prefix and range scanning of keys.
 
