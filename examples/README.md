@@ -11,4 +11,4 @@ for persistence in a web server context.
 
 * [`range.go`](range.go) - extends the previous example to demonstrate [range scanning](https://github.com/joyrexus/buckets/blob/master/examples/range.go#L171-L174).
 
-* [`items.go`](range.go) - variant of the previous example, demonstrating another way to get items with a given key prefix or range: viz., using [`Bucket.PrefixItems`](https://github.com/joyrexus/buckets/blob/master/examples/items.go#L238-L252) and [`Bucket.RangeItems`](https://github.com/joyrexus/buckets/blob/master/examples/items.go#L208-L218).  
+* [`items.go`](range.go) - variant of the previous example, demonstrating another way to get items with a given key prefix: viz., using [`Bucket.PrefixItems`](https://github.com/joyrexus/buckets/blob/master/examples/items.go#L238-L252) and [`Bucket.RangeItems`](https://github.com/joyrexus/buckets/blob/master/examples/items.go#L208-L218).  

@@ -1,4 +1,4 @@
-# buckets 
+# buckets
 
 [![GoDoc](https://godoc.org/github.com/joyrexus/buckets?status.svg)](https://godoc.org/github.com/joyrexus/buckets)
 
@@ -10,7 +10,7 @@ In the parlance of [key/value stores](https://en.wikipedia.org/wiki/Key-value_da
 
 Note that buckets is just an extension of Bolt, providing a `Bucket` type with some nifty convenience methods for operating on the items (key/value pairs) within instances of it.  It streamlines simple transactions (a single put, get, or delete) and working with subsets of items within a bucket (via prefix and range scans). 
 
-For example, here's how you put an item in a bucket and get it back out. (Note, we're omitting proper error handling here.)
+For example, here's how you put an item in a bucket and get it back out. (Note we're omitting proper error handling here.)
 
 ```go
 // Open a buckets database.
@@ -41,7 +41,7 @@ As noted above, buckets is a wrapper for Bolt, streamlining [basic transactions]
 
 A buckets/bolt database contains a set of buckets.  What's a bucket?  It's basically just an [associative array](https://en.wikipedia.org/wiki/Associative_array), mapping keys to values.  For simplicity, we say that a bucket *contains* key/values pairs and we refer to these k/v pairs as "items".  You use buckets for storing and retrieving such items.
 
-Since Bolt stores keys in [byte-sorted order](https://github.com/boltdb/bolt#iterating-over-keys), we can take advantage of this sorted key namespace for fast prefix and range scanning of keys.
+Since Bolt stores keys in [byte-sorted order](https://github.com/boltdb/bolt#iterating-over-keys), we can take advantage of this sorted key namespace for fast prefix and range scanning of keys.  In particular, it gives us a way to easily retrieve a subset of items. (See the `PrefixItems` and `RangeItems` methods, described below.)
 
 
 #### Read/write transactions
@@ -89,3 +89,10 @@ func main() {
 ```
 
 Note that buckets obtains a file lock on the data file so multiple processes cannot open the same database at the same time.
+
+
+## Examples
+
+The docs contain numerous [examples](https://godoc.org/github.com/joyrexus/buckets#pkg-examples) demonstrating basic usage.
+
+See also the [`examples`](examples) directory for standalone examples, demonstrating use of buckets for persistence in a web service context.
