@@ -69,7 +69,7 @@ func client(id int, base string, paths []string) error {
 
 func ExampleBucket() {
 	// Open the database.
-	bx, _ := buckets.Open(tempFilePath())
+	bx, _ := buckets.Open(tempfile())
 	defer os.Remove(bx.Path())
 	defer bx.Close()
 

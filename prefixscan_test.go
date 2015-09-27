@@ -7,6 +7,9 @@ import (
 
 // Ensure we can scan prefixes.
 func TestPrefixScanner(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
 	paths, err := bx.New([]byte("paths"))
 
 	// items to put in `paths` bucket

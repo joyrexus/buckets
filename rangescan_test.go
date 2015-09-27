@@ -7,6 +7,9 @@ import (
 
 // Ensures we can scan ranges.
 func TestRangeScanner(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
 	years, err := bx.New([]byte("years"))
 	if err != nil {
 		t.Error(err.Error())

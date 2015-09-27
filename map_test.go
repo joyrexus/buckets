@@ -3,13 +3,16 @@ package buckets_test
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"testing"
+
+	"github.com/joyrexus/buckets"
 )
 
 // Ensure that we can apply functions to each k/v pair.
 func TestMap(t *testing.T) {
-	// Delete any existing bucket named "letters".
-	bx.Delete([]byte("letters"))
+	bx := NewTestDB()
+	defer bx.Close()
 
 	// Create a new bucket.
 	letters, err := bx.New([]byte("letters"))
@@ -65,8 +68,8 @@ func TestMap(t *testing.T) {
 // Ensure that we can apply a function to the k/v pairs
 // of keys with a given prefix.
 func TestMapPrefix(t *testing.T) {
-	// Delete any existing bucket named "things".
-	bx.Delete([]byte("things"))
+	bx := NewTestDB()
+	defer bx.Close()
 
 	// Create a new things bucket.
 	things, err := bx.New([]byte("things"))
@@ -135,8 +138,9 @@ func TestMapPrefix(t *testing.T) {
 // Show that we can apply a function to the k/v pairs
 // of keys with a given prefix.
 func ExampleBucket_MapPrefix() {
-	// Delete any existing bucket named "things".
-	bx.Delete([]byte("things"))
+	bx, _ := buckets.Open(tempfile())
+	defer os.Remove(bx.Path())
+	defer bx.Close()
 
 	// Create a new things bucket.
 	things, _ := bx.New([]byte("things"))
@@ -191,8 +195,8 @@ func ExampleBucket_MapPrefix() {
 // Ensure we can apply functions to the k/v pairs
 // of keys within a given range.
 func TestMapRange(t *testing.T) {
-	// Delete any existing bucket named "years".
-	bx.Delete([]byte("years"))
+	bx := NewTestDB()
+	defer bx.Close()
 
 	years, err := bx.New([]byte("years"))
 	if err != nil {
@@ -262,6 +266,10 @@ func TestMapRange(t *testing.T) {
 // Show that we can apply a function to the k/v pairs
 // of keys within a given range.
 func ExampleBucket_MapRange() {
+	bx, _ := buckets.Open(tempfile())
+	defer os.Remove(bx.Path())
+	defer bx.Close()
+
 	// Delete any existing bucket named "years".
 	bx.Delete([]byte("years"))
 

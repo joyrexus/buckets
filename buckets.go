@@ -115,8 +115,8 @@ func (bk *Bucket) Items() (items []Item, err error) {
 	})
 }
 
-// PrefixItems returns a slice of key/value pairs for all keys with 
-// a given prefix.  Each k/v pair in the slice is of type Item 
+// PrefixItems returns a slice of key/value pairs for all keys with
+// a given prefix.  Each k/v pair in the slice is of type Item
 // (`struct{ Key, Value []byte }`).
 func (bk *Bucket) PrefixItems(pre []byte) (items []Item, err error) {
 	err = bk.db.View(func(tx *bolt.Tx) error {
@@ -129,8 +129,8 @@ func (bk *Bucket) PrefixItems(pre []byte) (items []Item, err error) {
 	return items, err
 }
 
-// RangeItems returns a slice of key/value pairs for all keys within 
-// a given range.  Each k/v pair in the slice is of type Item 
+// RangeItems returns a slice of key/value pairs for all keys within
+// a given range.  Each k/v pair in the slice is of type Item
 // (`struct{ Key, Value []byte }`).
 func (bk *Bucket) RangeItems(min []byte, max []byte) (items []Item, err error) {
 	err = bk.db.View(func(tx *bolt.Tx) error {
@@ -171,6 +171,7 @@ func (bk *Bucket) MapRange(do func(k, v []byte) error, min, max []byte) error {
 		return nil
 	})
 }
+
 // NewPrefixScanner initializes a new prefix scanner.
 func (bk *Bucket) NewPrefixScanner(pre []byte) *PrefixScanner {
 	return &PrefixScanner{bk.db, bk.Name, pre}

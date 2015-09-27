@@ -3,11 +3,32 @@ package buckets_test
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"testing"
+
+	"github.com/joyrexus/buckets"
 )
+
+// Ensure that we can create and delete a bucket.
+func TestBucket(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
+	_, err := bx.New([]byte("things"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	if err := bx.Delete([]byte("things")); err != nil {
+		t.Error(err.Error())
+	}
+}
 
 // Ensure we can put an item in a bucket.
 func TestPut(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
 	things, err := bx.New([]byte("things"))
 	if err != nil {
 		t.Error(err.Error())
@@ -29,6 +50,10 @@ func TestPut(t *testing.T) {
 
 // Show we can put an item in a bucket and get it back out.
 func ExampleBucket_Put() {
+	bx, _ := buckets.Open(tempfile())
+	defer os.Remove(bx.Path())
+	defer bx.Close()
+
 	// Create a new `things` bucket.
 	bucket := []byte("things")
 	things, _ := bx.New(bucket)
@@ -50,6 +75,9 @@ func ExampleBucket_Put() {
 
 // Ensure that a bucket that gets a non-existent key returns nil.
 func TestGetMissing(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
 	things, err := bx.New([]byte("things"))
 	if err != nil {
 		t.Error(err.Error())
@@ -63,6 +91,9 @@ func TestGetMissing(t *testing.T) {
 
 // Ensure that we can delete stuff in a bucket.
 func TestDelete(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
 	things, err := bx.New([]byte("things"))
 	if err != nil {
 		t.Error(err.Error())
@@ -80,6 +111,9 @@ func TestDelete(t *testing.T) {
 
 // Ensure we can insert items into a bucket and get them back out.
 func TestInsert(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
 	paths, err := bx.New([]byte("paths"))
 
 	// k, v pairs to put in `paths` bucket
@@ -124,9 +158,13 @@ func TestInsert(t *testing.T) {
 
 // Show we can insert items into a bucket and get them back out.
 func ExampleBucket_Insert() {
+	bx, _ := buckets.Open(tempfile())
+	defer os.Remove(bx.Path())
+	defer bx.Close()
+
 	letters, _ := bx.New([]byte("letters"))
 
-	// Setup items to insert in `paths` bucket.
+	// Setup items to insert in `letters` bucket.
 	items := []struct {
 		Key, Value []byte
 	}{
@@ -155,8 +193,8 @@ func ExampleBucket_Insert() {
 
 // Ensure that we can get items for all keys with a given prefix.
 func TestPrefixItems(t *testing.T) {
-	// Delete any existing bucket named "things".
-	bx.Delete([]byte("things"))
+	bx := NewTestDB()
+	defer bx.Close()
 
 	// Create a new things bucket.
 	things, err := bx.New([]byte("things"))
@@ -213,8 +251,9 @@ func TestPrefixItems(t *testing.T) {
 
 // Show that we can get items for all keys with a given prefix.
 func ExampleBucket_PrefixItems() {
-	// Delete any existing bucket named "things".
-	bx.Delete([]byte("things"))
+	bx, _ := buckets.Open(tempfile())
+	defer os.Remove(bx.Path())
+	defer bx.Close()
 
 	// Create a new things bucket.
 	things, _ := bx.New([]byte("things"))
@@ -257,8 +296,8 @@ func ExampleBucket_PrefixItems() {
 
 // Ensure we can get items for all keys within a given range.
 func TestRangeItems(t *testing.T) {
-	// Delete any existing bucket named "years".
-	bx.Delete([]byte("years"))
+	bx := NewTestDB()
+	defer bx.Close()
 
 	years, err := bx.New([]byte("years"))
 	if err != nil {
@@ -317,8 +356,9 @@ func TestRangeItems(t *testing.T) {
 
 // Show that we get items for keys within a given range.
 func ExampleBucket_RangeItems() {
-	// Delete any existing bucket named "years".
-	bx.Delete([]byte("years"))
+	bx, _ := buckets.Open(tempfile())
+	defer os.Remove(bx.Path())
+	defer bx.Close()
 
 	// Create a new bucket named "years".
 	years, _ := bx.New([]byte("years"))

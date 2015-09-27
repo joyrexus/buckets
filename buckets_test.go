@@ -4,52 +4,36 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"testing"
 
 	"github.com/joyrexus/buckets"
 )
 
-var (
-	bx   *buckets.DB    // buckets db used across tests
-	path string         // file path to temp db
-)
-
-// TestMain handles setup and teardown for our tests.
-func TestMain(m *testing.M) {
-	setup()
-	result := m.Run()
-	if err := teardown(); err != nil {
-		log.Fatal(err)
-	}
-	os.Exit(result)
+type TestDB struct {
+	*buckets.DB
 }
 
-// setup creates a new bux db for testing.
-func setup() {
-	var err error
-	path = tempFilePath()
-	bx, err = buckets.Open(path)
-	// log.Printf("Temp file created: %v", path)
+// NewTestDB returns a TestDB using a temporary path.
+func NewTestDB() *TestDB {
+	bx, err := buckets.Open(tempfile())
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Could not open buckets database: %s", err)
 	}
+	// Return wrapped type.
+	return &TestDB{bx}
 }
 
-// teardown closes the db and removes the dbfile.
-func teardown() error {
-	if err := os.Remove(bx.Path()); err != nil {
-		return err
-	}
-	// log.Printf("Temp file removed: %v", path)
-	if err := bx.Close(); err != nil {
-		return err
-	}
-	return nil
+// Close and delete buckets database.
+func (db *TestDB) Close() {
+	defer os.Remove(db.Path())
+	db.DB.Close()
 }
 
-// tempFilePath returns a temporary file path.
-func tempFilePath() string {
-	f, _ := ioutil.TempFile("", "bolt-")
+// tempfile returns a temporary file path.
+func tempfile() string {
+	f, err := ioutil.TempFile("", "bolt-")
+	if err != nil {
+		log.Fatalf("Could not create temp file: %s", err)
+	}
 	if err := f.Close(); err != nil {
 		log.Fatal(err)
 	}
