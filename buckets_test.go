@@ -16,7 +16,7 @@ type TestDB struct {
 func NewTestDB() *TestDB {
 	bx, err := buckets.Open(tempfile())
 	if err != nil {
-		log.Fatalf("Could not open buckets database: %s", err)
+		log.Fatalf("cannot open buckets database: %s", err)
 	}
 	// Return wrapped type.
 	return &TestDB{bx}

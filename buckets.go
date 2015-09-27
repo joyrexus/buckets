@@ -20,7 +20,7 @@ func Open(path string) (*DB, error) {
 	config := &bolt.Options{Timeout: 1 * time.Second}
 	db, err := bolt.Open(path, 0600, config)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't open %s: %s", path, err)
+		return nil, fmt.Errorf("couldn't open %s: %s", path, err)
 	}
 	return &DB{db}, nil
 }
