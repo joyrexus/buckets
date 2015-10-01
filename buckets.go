@@ -8,7 +8,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-// A buckets DB is a set of buckets.
+// A DB is a bolt database with convenience methods for working with buckets.
 //
 // A DB embeds the exposed bolt.DB methods.
 type DB struct {

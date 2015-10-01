@@ -36,7 +36,6 @@ func (rs *RangeScanner) Count() (count int, err error) {
 	return count, err
 }
 
-// Values returns a slice of values for keys within the range.
 // Keys returns a slice of keys within the range.
 func (rs *RangeScanner) Keys() (keys [][]byte, err error) {
 	err = rs.db.View(func(tx *bolt.Tx) error {
