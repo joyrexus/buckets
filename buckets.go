@@ -108,8 +108,15 @@ func (bk *Bucket) Get(k []byte) (value []byte, err error) {
 func (bk *Bucket) Items() (items []Item, err error) {
 	return items, bk.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(bk.Name).Cursor()
+		var key, value []byte
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			items = append(items, Item{k, v})
+			if v != nil {
+				key = make([]byte, len(k))
+				copy(key, k)
+				value = make([]byte, len(v))
+				copy(value, v)
+				items = append(items, Item{key, value})
+			}
 		}
 		return nil
 	})
@@ -121,8 +128,15 @@ func (bk *Bucket) Items() (items []Item, err error) {
 func (bk *Bucket) PrefixItems(pre []byte) (items []Item, err error) {
 	err = bk.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(bk.Name).Cursor()
+		var key, value []byte
 		for k, v := c.Seek(pre); bytes.HasPrefix(k, pre); k, v = c.Next() {
-			items = append(items, Item{k, v})
+			if v != nil {
+				key = make([]byte, len(k))
+				copy(key, k)
+				value = make([]byte, len(v))
+				copy(value, v)
+				items = append(items, Item{key, value})
+			}
 		}
 		return nil
 	})
@@ -135,8 +149,15 @@ func (bk *Bucket) PrefixItems(pre []byte) (items []Item, err error) {
 func (bk *Bucket) RangeItems(min []byte, max []byte) (items []Item, err error) {
 	err = bk.db.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(bk.Name).Cursor()
+		var key, value []byte
 		for k, v := c.Seek(min); isBefore(k, max); k, v = c.Next() {
-			items = append(items, Item{k, v})
+			if v != nil {
+				key = make([]byte, len(k))
+				copy(key, k)
+				value = make([]byte, len(v))
+				copy(value, v)
+				items = append(items, Item{key, value})
+			}
 		}
 		return nil
 	})
