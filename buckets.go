@@ -122,6 +122,25 @@ func (bk *Bucket) Items() (items []Item, err error) {
 	})
 }
 
+// ItemsAsMap returns a key/value map (map[string]([]byte) of all elements.
+func (bk *Bucket) ItemsAsMap() (items map[string][]byte, err error) {
+	items = make(map[string][]byte)
+	return items, bk.db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(bk.Name).Cursor()
+		var key, value []byte
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			if v != nil {
+				key = make([]byte, len(k))
+				copy(key, k)
+				value = make([]byte, len(v))
+				copy(value, v)
+				items[string(key)] = value
+			}
+		}
+		return nil
+	})
+}
+
 // PrefixItems returns a slice of key/value pairs for all keys with
 // a given prefix.  Each k/v pair in the slice is of type Item
 // (`struct{ Key, Value []byte }`).
