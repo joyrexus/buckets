@@ -261,6 +261,56 @@ func ExampleBucket_Insert() {
 	// C -> gamma
 }
 
+// Ensure we can safely insert items into a bucket without overwriting 
+// existing items.
+func TestInsertNX(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
+	bk, err := bx.New([]byte("test"))
+
+	// Put k/v into the `bk` bucket.
+	k, v := []byte("A"), []byte("alpha")
+	if err := bk.Put(k, v); err != nil {
+		t.Error(err.Error())
+	}
+
+	// k/v pairs to put-if-not-exists
+	items := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("A"), []byte("ALPHA")},	// key exists, so don't update
+		{[]byte("B"), []byte("beta")},
+		{[]byte("C"), []byte("gamma")},
+	}
+
+	err = bk.InsertNX(items)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	gotItems, err := bk.Items()
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// expected items
+	expected := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("A"), []byte("alpha")},	// existing value not updated
+		{[]byte("B"), []byte("beta")},
+		{[]byte("C"), []byte("gamma")},
+	}
+
+	for i, got := range gotItems {
+		want := expected[i]
+		if !bytes.Equal(got.Value, want.Value) {
+			t.Errorf("key %q: got %v, want %v", got.Key, got.Value, want.Value)
+		}
+	}
+}
+
 // Ensure that we can get items for all keys with a given prefix.
 func TestPrefixItems(t *testing.T) {
 	bx := NewTestDB()

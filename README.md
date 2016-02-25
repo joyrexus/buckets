@@ -46,9 +46,11 @@ Since Bolt stores keys in [byte-sorted order](https://github.com/boltdb/bolt#ite
 
 #### Read/write transactions
 
-* [`Put(k, v)`](https://godoc.org/github.com/joyrexus/buckets#Bucket.Put) - save item
+* [`Put(k, v)`](https://godoc.org/github.com/joyrexus/buckets#Bucket.Put) - save/update item
+* [`PutNX(k, v)`](https://godoc.org/github.com/joyrexus/buckets#Bucket.Put) - save item if key does not exist
 * [`Delete(k)`](https://godoc.org/github.com/joyrexus/buckets#Bucket.Delete) - delete item
-* [`Insert(items)`](https://godoc.org/github.com/joyrexus/buckets#Bucket.Insert) - save items (k/v pairs)
+* [`Insert(items)`](https://godoc.org/github.com/joyrexus/buckets#Bucket.Insert) - save/update items (k/v pairs)
+* [`InsertNX(items)`](https://godoc.org/github.com/joyrexus/buckets#Bucket.Insert) - for each item (k/v pair), save item if key does not exist
 
 
 #### Read-only transactions
