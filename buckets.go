@@ -70,6 +70,18 @@ func (bk *Bucket) Put(k, v []byte) error {
 	})
 }
 
+// PutNX (put-if-not-exists) inserts value `v` with key `k` 
+// if key doesn't exist.
+func (bk *Bucket) PutNX(k, v []byte) error {
+	v, err := bk.Get(k)
+	if v != nil || err != nil {
+		return err
+	}
+	return bk.db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(bk.Name).Put(k, v)
+	})
+}
+
 // Insert iterates over a slice of k/v pairs, putting each item in
 // the bucket as part of a single transaction.  For large insertions,
 // be sure to pre-sort your items (by Key in byte-sorted order), which

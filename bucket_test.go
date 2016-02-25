@@ -73,6 +73,76 @@ func ExampleBucket_Put() {
 	// The value of "A" in `things` is "alpha"
 }
 
+// Ensure we don't overwrite existing items when using PutNX.
+func TestPutNX(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
+	things, err := bx.New([]byte("things"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	key := []byte("A")
+	a, b := []byte("alpha"), []byte("beta")
+
+	// Put key/a-value into the `things` bucket.
+	if err := things.PutNX(key, a); err != nil {
+		t.Error(err.Error())
+	}
+
+	// Read value back in a different read-only transaction.
+	got, err := things.Get(key)
+	if err != nil && !bytes.Equal(got, a) {
+		t.Error(err.Error())
+	}
+
+	// Try putting key/b-value into the `things` bucket.
+	if err := things.PutNX(key, b); err != nil {
+		t.Error(err.Error())
+	}
+
+	// Value for key should still be a, not b.
+	got, err = things.Get(key)
+	if err != nil && !bytes.Equal(got, a) {
+		t.Error(err.Error())
+	}
+}
+
+// Show we don't overwrite existing values when using PutNX.
+func ExampleBucket_PutNX() {
+	bx, _ := buckets.Open(tempfile())
+	defer os.Remove(bx.Path())
+	defer bx.Close()
+
+	// Create a new `things` bucket.
+	bucket := []byte("things")
+	things, _ := bx.New(bucket)
+
+	// Put key/value into the `things` bucket.
+	key, value := []byte("A"), []byte("alpha")
+	if err := things.Put(key, value); err != nil {
+		fmt.Printf("could not insert item: %v", err)
+	}
+
+	// Read value back in a different read-only transaction.
+	got, _ := things.Get(key)
+
+	fmt.Printf("The value of %q in `%s` is %q\n", key, bucket, got)
+
+	// Try putting another value with same key.
+	things.PutNX(key, []byte("beta"))
+
+	// Read value back in a different read-only transaction.
+	got, _ = things.Get(key)
+
+	fmt.Printf("The value of %q in `%s` is still %q\n", key, bucket, got)
+
+	// Output:
+	// The value of "A" in `things` is "alpha"
+	// The value of "A" in `things` is still "alpha"
+}
+
 // Ensure that a bucket that gets a non-existent key returns nil.
 func TestGetMissing(t *testing.T) {
 	bx := NewTestDB()
