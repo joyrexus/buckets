@@ -95,6 +95,22 @@ func (bk *Bucket) Insert(items []struct{ Key, Value []byte }) error {
 	})
 }
 
+// InsertNX (insert-if-not-exists) iterates over a slice of k/v pairs, 
+// putting each item in the bucket as part of a single transaction.  
+// Unlike Insert, however, InsertNX will not update the value for an 
+// existing key.
+func (bk *Bucket) InsertNX(items []struct{ Key, Value []byte }) error {
+	return bk.db.Update(func(tx *bolt.Tx) error {
+		for _, item := range items {
+			v, _ := bk.Get(item.Key)
+			if v == nil {
+				tx.Bucket(bk.Name).Put(item.Key, item.Value)
+			}
+		}
+		return nil
+	})
+}
+
 // Delete removes key `k`.
 func (bk *Bucket) Delete(k []byte) error {
 	return bk.db.Update(func(tx *bolt.Tx) error {
