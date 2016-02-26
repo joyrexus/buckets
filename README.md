@@ -1,6 +1,9 @@
 # buckets
 
 [![GoDoc](https://godoc.org/github.com/joyrexus/buckets?status.svg)](https://godoc.org/github.com/joyrexus/buckets)
+[![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
+[![Report Card](https://goreportcard.com/badge/github.com/joyrexus/buckets)](https://goreportcard.com/report/github.com/joyrexus/buckets)
+
 
 A simple key/value store based on [Bolt](https://github.com/boltdb/bolt). 
 
