@@ -137,7 +137,7 @@ func NewController(bk *buckets.Bucket) *Controller {
 	return &Controller{bk, prefix}
 }
 
-// This Controller handles requests for todo items.  The items are stored
+// Controller handles requests for todo items.  The items are stored
 // in a todos bucket.  The request URLs are used as bucket keys and the
 // raw json payload as values.
 //
@@ -204,7 +204,7 @@ func (c *Controller) post(w http.ResponseWriter, r *http.Request,
 
 /* -- CLIENT -- */
 
-// Our http client for sending requests.
+// Client is our http client for sending requests.
 type Client struct{}
 
 // post sends a post request with a json payload.

@@ -66,7 +66,7 @@ func main() {
 		}
 	}
 
-	for path, _ := range posts {
+	for path := range posts {
 		url := srv.URL + path
 		task, err := client.get(url)
 		if err != nil {
@@ -87,6 +87,7 @@ func main() {
 
 /* -- MODELS --*/
 
+// Todo holds a task description and the day of week in which to do it.
 type Todo struct {
 	Task string
 	Day  string
@@ -108,7 +109,7 @@ func NewService(bk *buckets.Bucket) *Service {
 	return &Service{bk}
 }
 
-// This service handles requests for todo items.  The items are stored
+// Service handles requests for todo items.  The items are stored
 // in a todos bucket.  The request URLs are used as bucket keys and the
 // raw json payload as values.
 //
@@ -159,7 +160,7 @@ func (s *Service) post(w http.ResponseWriter, r *http.Request, _ mux.Params) {
 
 /* -- CLIENT -- */
 
-// Our http client for sending requests.
+// Client is our http client for sending requests.
 type Client struct{}
 
 // post sends a post request with a json payload.

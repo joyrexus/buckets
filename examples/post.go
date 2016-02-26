@@ -107,6 +107,7 @@ func main() {
 	// /wed: flip burgers
 }
 
+// Todo holds a task description and the day of week in which to do it.
 type Todo struct {
 	Task string
 	Day  string

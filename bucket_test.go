@@ -261,7 +261,7 @@ func ExampleBucket_Insert() {
 	// C -> gamma
 }
 
-// Ensure we can safely insert items into a bucket without overwriting 
+// Ensure we can safely insert items into a bucket without overwriting
 // existing items.
 func TestInsertNX(t *testing.T) {
 	bx := NewTestDB()
@@ -279,7 +279,7 @@ func TestInsertNX(t *testing.T) {
 	items := []struct {
 		Key, Value []byte
 	}{
-		{[]byte("A"), []byte("ALPHA")},	// key exists, so don't update
+		{[]byte("A"), []byte("ALPHA")}, // key exists, so don't update
 		{[]byte("B"), []byte("beta")},
 		{[]byte("C"), []byte("gamma")},
 	}
@@ -298,7 +298,7 @@ func TestInsertNX(t *testing.T) {
 	expected := []struct {
 		Key, Value []byte
 	}{
-		{[]byte("A"), []byte("alpha")},	// existing value not updated
+		{[]byte("A"), []byte("alpha")}, // existing value not updated
 		{[]byte("B"), []byte("beta")},
 		{[]byte("C"), []byte("gamma")},
 	}

@@ -163,7 +163,7 @@ func NewController(bk *buckets.Bucket) *Controller {
 	return &Controller{bk, daynum}
 }
 
-// This Controller handles requests for todo items.  The items are stored
+// Controller handles requests for todo items.  The items are stored
 // in a todos bucket.  The request URLs are used as bucket keys and the
 // raw json payload as values.
 //
@@ -179,7 +179,7 @@ type Controller struct {
 // combined task list for saturday and sunday.
 //
 // Note how we utilize the RangeItems method, which makes it easy
-// to get items in our todos bucket with keys in a certain range 
+// to get items in our todos bucket with keys in a certain range
 // (6 <= key < 8), viz., the items for sat and sun.
 func (c *Controller) getWeekendTasks(w http.ResponseWriter, r *http.Request,
 	_ httprouter.Params) {
@@ -209,7 +209,7 @@ func (c *Controller) getWeekendTasks(w http.ResponseWriter, r *http.Request,
 // combined task list for monday through friday.
 //
 // Note how we utilize the RangeItems method, which makes it easy
-// to get items in our todos bucket with keys in a certain range 
+// to get items in our todos bucket with keys in a certain range
 // (1 <= key < 6), viz., the items for mon through fri.
 func (c *Controller) getWeekdayTasks(w http.ResponseWriter, r *http.Request,
 	_ httprouter.Params) {
@@ -239,7 +239,7 @@ func (c *Controller) getWeekdayTasks(w http.ResponseWriter, r *http.Request,
 // day's task list.
 //
 // Note how we utilize the PrefixItems method for the day requested (as
-// indicated in the route's `day` parameter). This makes it easy to get 
+// indicated in the route's `day` parameter). This makes it easy to get
 // items in our todos bucket with a certain prefix, viz. those with the
 // prefix representing the requested day.
 func (c *Controller) getDayTasks(w http.ResponseWriter, r *http.Request,
@@ -303,7 +303,7 @@ func (c *Controller) post(w http.ResponseWriter, r *http.Request,
 
 /* -- CLIENT -- */
 
-// Our http client for sending requests.
+// Client is our http client for sending requests.
 type Client struct{}
 
 // post sends a post request with a json payload.
