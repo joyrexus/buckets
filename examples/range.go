@@ -51,19 +51,19 @@ func main() {
 
 	// Setup daily todos for client to post.
 	posts := []*Todo{
-		&Todo{Day: "mon", Task: "milk cows"},
-		&Todo{Day: "mon", Task: "feed cows"},
-		&Todo{Day: "mon", Task: "wash cows"},
-		&Todo{Day: "tue", Task: "wash laundry"},
-		&Todo{Day: "tue", Task: "fold laundry"},
-		&Todo{Day: "tue", Task: "iron laundry"},
-		&Todo{Day: "wed", Task: "flip burgers"},
-		&Todo{Day: "thu", Task: "join army"},
-		&Todo{Day: "fri", Task: "kill time"},
-		&Todo{Day: "sat", Task: "have beer"},
-		&Todo{Day: "sat", Task: "make merry"},
-		&Todo{Day: "sun", Task: "take aspirin"},
-		&Todo{Day: "sun", Task: "pray quietly"},
+		{Day: "mon", Task: "milk cows"},
+		{Day: "mon", Task: "feed cows"},
+		{Day: "mon", Task: "wash cows"},
+		{Day: "tue", Task: "wash laundry"},
+		{Day: "tue", Task: "fold laundry"},
+		{Day: "tue", Task: "iron laundry"},
+		{Day: "wed", Task: "flip burgers"},
+		{Day: "thu", Task: "join army"},
+		{Day: "fri", Task: "kill time"},
+		{Day: "sat", Task: "have beer"},
+		{Day: "sat", Task: "make merry"},
+		{Day: "sun", Task: "take aspirin"},
+		{Day: "sun", Task: "pray quietly"},
 	}
 
 	// Create our client.

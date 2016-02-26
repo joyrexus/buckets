@@ -40,13 +40,13 @@ func main() {
 
 	// Daily todos to post.
 	posts := map[string]*Todo{
-		"/mon": &Todo{Day: "mon", Task: "milk cows"},
-		"/tue": &Todo{Day: "tue", Task: "fold laundry"},
-		"/wed": &Todo{Day: "wed", Task: "flip burgers"},
-		"/thu": &Todo{Day: "thu", Task: "join army"},
-		"/fri": &Todo{Day: "fri", Task: "kill time"},
-		"/sat": &Todo{Day: "sat", Task: "make merry"},
-		"/sun": &Todo{Day: "sun", Task: "pray quietly"},
+		"/mon": {Day: "mon", Task: "milk cows"},
+		"/tue": {Day: "tue", Task: "fold laundry"},
+		"/wed": {Day: "wed", Task: "flip burgers"},
+		"/thu": {Day: "thu", Task: "join army"},
+		"/fri": {Day: "fri", Task: "kill time"},
+		"/sat": {Day: "sat", Task: "make merry"},
+		"/sun": {Day: "sun", Task: "pray quietly"},
 	}
 
 	// Make a series of post requests to our server.
