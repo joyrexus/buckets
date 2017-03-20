@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/joyrexus/buckets"
@@ -366,6 +367,55 @@ func TestPrefixItems(t *testing.T) {
 		if !bytes.Equal(got.Value, want.Value) {
 			t.Errorf("got %v, want %v", got.Value, want.Value)
 		}
+	}
+}
+
+// Ensure that a bucket that gets a non-existent key returns nil.
+func TestItemsAsMap(t *testing.T) {
+	bx := NewTestDB()
+	defer bx.Close()
+
+	things, err := bx.New([]byte("things"))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	// Setup items to insert.
+	items := []struct {
+		Key, Value []byte
+	}{
+		{[]byte("A"), []byte("1")},   // `A` prefix match
+		{[]byte("AA"), []byte("2")},  // match
+		{[]byte("AAA"), []byte("3")}, // match
+		{[]byte("AAB"), []byte("2")}, // match
+		{[]byte("B"), []byte("O")},
+		{[]byte("BA"), []byte("0")},
+		{[]byte("BAA"), []byte("0")},
+	}
+
+	// Insert 'em.
+	if err := things.Insert(items); err != nil {
+		fmt.Printf("could not insert items in `things` bucket: %v\n", err)
+	}
+
+	got, err := things.ItemsAsMap()
+	if err != nil {
+		fmt.Printf("could not get map of items: %v\n", err)
+	}
+	want := map[string][]byte{
+		"A":   []byte("1"),
+		"AA":  []byte("2"),
+		"AAA": []byte("3"),
+		"AAB": []byte("2"),
+		"B":   []byte("O"),
+		"BA":  []byte("0"),
+		"BAA": []byte("0"),
+	}
+
+	// Check if inserted data is the same as retrieved
+	eq := reflect.DeepEqual(want, got)
+	if !eq {
+		t.Errorf("got %v, want %v", got, want)
 	}
 }
 
